@@ -11,6 +11,9 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const result = await sql`SELECT * FROM campaigns;`;
       console.log('Datenbankergebnis:', result.rows); // Debug-Log
+      if (result.rows.length === 0) {
+        console.log('Keine Daten in der Tabelle gefunden.');
+      }
       return res.status(200).json(result.rows);
     }
 
@@ -52,7 +55,7 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Methode nicht erlaubt' });
   } catch (error) {
-    console.error('Datenbankfehler:', error.message);
-    return res.status(500).json({ error: 'Interner Serverfehler' });
+    console.error('Datenbankfehler:', error.message, error.stack); // Detaillierter Fehler
+    return res.status(500).json({ error: 'Interner Serverfehler', details: error.message });
   }
 }
