@@ -1,16 +1,28 @@
-/* App.css - Modernes, desktop-optimiertes Styling für UTM Builder */
+/* App.css - Modernes, edles Darkmode-Design für UTM Builder */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --primary-color: #2563eb; /* Blau für primäre Aktionen */
-  --secondary-color: #4b5563; /* Grau für sekundäre Elemente */
-  --success-color: #10b981; /* Grün für Erfolgszustände */
-  --error-color: #ef4444; /* Rot für Fehler */
-  --background-color: #f9fafb; /* Heller Hintergrund */
-  --card-background: #ffffff; /* Weiß für Karten */
-  --border-color: #e5e7eb; /* Heller Rahmen */
+  --primary-color: #60a5fa; /* Neon-Blau für primäre Aktionen */
+  --secondary-color: #9ca3af; /* Helles Grau für sekundäre Elemente */
+  --success-color: #34d399; /* Leuchtendes Grün für Erfolgszustände */
+  --error-color: #f87171; /* Korallenrot für Fehler */
+  --background-color: #1f2937; /* Dunkles Grau für Hintergrund */
+  --card-background: #374151; /* Etwas helleres Grau für Karten */
+  --border-color: #4b5563; /* Dunkles Grau für Rahmen */
+  --text-color: #f3f4f6; /* Helles Grau für Text */
+  --accent-color: #d1d5db; /* Subtiles Grau für Akzente */
+}
+
+@layer components {
+  .border-error-30 {
+    border-color: rgba(248, 113, 113, 0.3); /* Entspricht var(--error-color) mit 30% Opacity */
+  }
 }
 
 body {
-  @apply font-sans antialiased text-gray-900;
+  @apply font-sans antialiased bg-[var(--background-color)] text-[var(--text-color)];
 }
 
 .container {
@@ -18,75 +30,75 @@ body {
 }
 
 .card {
-  @apply bg-white rounded-xl shadow-lg p-8 mb-8;
+  @apply bg-[var(--card-background)] rounded-xl shadow-2xl p-8 mb-8 border border-[var(--border-color)];
 }
 
 h1 {
-  @apply text-4xl font-bold text-gray-900 mb-2 tracking-tight;
+  @apply text-4xl font-bold text-[var(--text-color)] mb-2 tracking-tight;
 }
 
 h2 {
-  @apply text-2xl font-semibold text-gray-800 mb-4;
+  @apply text-2xl font-semibold text-[var(--text-color)] mb-4;
 }
 
 h3 {
-  @apply text-lg font-medium text-gray-700 mb-3;
+  @apply text-lg font-medium text-[var(--accent-color)] mb-3;
 }
 
 p {
-  @apply text-gray-600 mb-6;
+  @apply text-[var(--accent-color)] mb-6;
 }
 
 label {
-  @apply block text-sm font-medium text-gray-700 mb-2;
+  @apply block text-sm font-medium text-[var(--text-color)] mb-2;
 }
 
 input, select {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200;
+  @apply w-full px-4 py-3 bg-[var(--background-color)] text-[var(--text-color)] border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition duration-300;
 }
 
 input[readonly] {
-  @apply bg-gray-100 cursor-not-allowed;
+  @apply bg-gray-800 cursor-not-allowed opacity-75;
 }
 
 input.error, select.error {
-  @apply border-red-500 focus:ring-red-500;
+  @apply border-[var(--error-color)] focus:ring-[var(--error-color)];
 }
 
 .error-message {
-  @apply text-red-500 text-xs mt-1;
+  @apply text-[var(--error-color)] text-xs mt-1;
 }
 
 button {
-  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-300;
 }
 
 button.primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed;
+  @apply bg-[var(--primary-color)] text-white hover:bg-blue-400 disabled:bg-gray-600 disabled:cursor-not-allowed shadow-md;
 }
 
 button.secondary {
-  @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
+  @apply bg-gray-700 text-[var(--text-color)] hover:bg-gray-600 border border-[var(--border-color)];
 }
 
 button.success {
-  @apply bg-green-500 text-white hover:bg-green-600;
+  @apply bg-[var(--success-color)] text-white hover:bg-green-500 shadow-md;
 }
 
 button.danger {
-  @apply text-red-600 hover:bg-red-100 rounded;
+  @apply text-[var(--error-color)] hover:bg-red-900/30 rounded border border-error-30;
 }
 
 button.icon {
-  @apply p-2 rounded-lg hover:bg-gray-100;
+  @apply p-2 rounded-lg hover:bg-gray-700/50 border border-[var(--border-color)]/50;
 }
 
 .generated-url-container {
-  @apply mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200;
+  @apply mt-6 p-6 bg-gray-800 rounded-lg border border-[var(--border-color)];
 }
 
 .campaign-item {
-  @apply flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow duration-200;
+  @apply flex items-center justify-between p-4 bg-[var(--card-background)] border border-[var(--border-color)] rounded-lg hover:shadow-xl transition-shadow duration-300;
 }
 
 .campaign-list {
@@ -98,11 +110,11 @@ button.icon {
 }
 
 .search-icon {
-  @apply absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400;
+  @apply absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--accent-color)];
 }
 
 .search-input {
-  @apply w-full pl-10 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply w-full pl-10 pr-3 py-2 text-sm bg-[var(--background-color)] text-[var(--text-color)] border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition duration-300;
 }
 
 /* Benutzerdefinierter Scrollbar für Kampagnenliste */
@@ -111,11 +123,11 @@ button.icon {
 }
 
 .campaign-list::-webkit-scrollbar-track {
-  @apply bg-gray-100 rounded;
+  @apply bg-gray-800 rounded;
 }
 
 .campaign-list::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded hover:bg-gray-500;
+  @apply bg-[var(--secondary-color)] rounded hover:bg-gray-500;
 }
 
 /* Responsive Anpassungen */
