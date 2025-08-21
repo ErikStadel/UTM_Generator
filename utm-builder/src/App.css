@@ -4,20 +4,29 @@
 @tailwind utilities;
 
 :root {
-  --primary-color: #60a5fa; /* Neon-Blau für primäre Aktionen */
-  --secondary-color: #9ca3af; /* Helles Grau für sekundäre Elemente */
-  --success-color: #34d399; /* Leuchtendes Grün für Erfolgszustände */
-  --error-color: #f87171; /* Korallenrot für Fehler */
-  --background-color: #1f2937; /* Dunkles Grau für Hintergrund */
-  --card-background: #374151; /* Etwas helleres Grau für Karten */
-  --border-color: #4b5563; /* Dunkles Grau für Rahmen */
-  --text-color: #f3f4f6; /* Helles Grau für Text */
-  --accent-color: #d1d5db; /* Subtiles Grau für Akzente */
+  --primary-color: #60a5fa;
+  --secondary-color: #9ca3af;
+  --success-color: #34d399;
+  --error-color: #f87171;
+  --background-color: #1f2937;
+  --card-background: #374151;
+  --border-color: #4b5563;
+  --text-color: #f3f4f6;
+  --accent-color: #d1d5db;
 }
 
 @layer components {
   .border-error-30 {
-    border-color: rgba(248, 113, 113, 0.3); /* Entspricht var(--error-color) mit 30% Opacity */
+    border-color: rgba(248, 113, 113, 0.3);
+  }
+  .border-gray-30 {
+    border-color: rgba(75, 85, 99, 0.3);
+  }
+  .border-custom {
+    border-color: var(--border-color) !important;
+  }
+  .border-custom:hover {
+    border-color: rgba(75, 85, 99, 0.6); /* Etwas heller für Feedback */
   }
 }
 
@@ -90,7 +99,7 @@ button.danger {
 }
 
 button.icon {
-  @apply p-2 rounded-lg hover:bg-gray-700/50 border border-[var(--border-color)]/50;
+  @apply p-2 rounded-lg hover:bg-gray-700/50 border border-gray-30;
 }
 
 .generated-url-container {

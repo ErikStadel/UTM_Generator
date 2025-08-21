@@ -330,7 +330,7 @@ const UTMBuilder = () => {
               <h2>Kampagnen-Bibliothek</h2>
               
               {/* Add new campaign */}
-              <div className="mb-6 p-6 bg-gray-50 rounded-lg border border-[var(--border-color)]">
+              <div className="mb-6 p-6 bg-[var(--card-background)] rounded-lg border border-custom shadow-lg">
                 <h3>Neue Kampagne hinzufügen</h3>
                 <div className="space-y-3">
                   <input
