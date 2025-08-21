@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Search, Archive, Plus, Trash2, Edit3, Check, X } from 'lucide-react';
+import './App.css';
 
 const UTMBuilder = () => {
   const [selectedChannel, setSelectedChannel] = useState('');
@@ -60,24 +61,16 @@ const UTMBuilder = () => {
     const errors = {};
     
     if (field === 'campaign' && value) {
-      // Check naming convention: [Jahr]_[Monat]_[Aktion]_[Variante]
       const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*_[a-z0-9][a-z0-9_]*$/;
-      
       if (!pattern.test(value)) {
         errors.campaign = 'Format: YYYY_MM_aktion_variante (nur Kleinbuchstaben, Zahlen und Unterstriche)';
       }
-      
-      // Check for uppercase letters
       if (/[A-Z]/.test(value)) {
         errors.campaign = 'Nur Kleinbuchstaben erlaubt';
       }
-      
-      // Check for spaces
       if (/\s/.test(value)) {
         errors.campaign = 'Keine Leerzeichen erlaubt, verwende Unterstriche';
       }
-      
-      // Check for invalid characters
       if (/[^a-z0-9_]/.test(value)) {
         errors.campaign = 'Nur Buchstaben, Zahlen und Unterstriche erlaubt';
       }
@@ -186,35 +179,35 @@ const UTMBuilder = () => {
   const canGenerateUrl = selectedChannel && utmParams.source && utmParams.medium && utmParams.campaign && !hasValidationErrors;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">UTM Parameter Builder</h1>
-          <p className="text-gray-600 mb-8">Erstelle konsistente UTM-Parameter für alle Marketing-Channels</p>
+    <div className="min-h-screen bg-[var(--background-color)]">
+      <div className="container">
+        <div className="card">
+          <h1>UTM Parameter Builder</h1>
+          <p>Erstelle konsistente UTM-Parameter für alle Marketing-Channels</p>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* UTM Builder */}
             <div>
-              <h2 className="text-xl font-semibold mb-4">UTM Parameter Generator</h2>
+              <h2>UTM Parameter Generator</h2>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Base URL</label>
+                  <label>Base URL</label>
                   <input
                     type="url"
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full"
                     placeholder="https://example.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Channel auswählen</label>
+                  <label>Channel auswählen</label>
                   <select
                     value={selectedChannel}
                     onChange={(e) => handleChannelChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full"
                   >
                     <option value="">-- Channel wählen --</option>
                     {Object.keys(channels).map(channel => (
@@ -227,27 +220,27 @@ const UTMBuilder = () => {
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">UTM Source</label>
+                        <label>UTM Source</label>
                         <input
                           type="text"
                           value={utmParams.source}
                           readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                          className="w-full"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">UTM Medium</label>
+                        <label>UTM Medium</label>
                         <input
                           type="text"
                           value={utmParams.medium}
                           readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                          className="w-full"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label>
                         UTM Campaign *
                         <span className="text-xs text-gray-500 ml-2">Format: YYYY_MM_aktion_variante</span>
                       </label>
@@ -256,15 +249,13 @@ const UTMBuilder = () => {
                           type="text"
                           value={utmParams.campaign}
                           onChange={(e) => handleParamChange('campaign', e.target.value)}
-                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            validationErrors.campaign ? 'border-red-500' : 'border-gray-300'
-                          }`}
+                          className={`flex-1 ${validationErrors.campaign ? 'error' : ''}`}
                           placeholder="2025_08_urlaubsrabatt_01"
                         />
                         <select
                           value=""
                           onChange={(e) => handleParamChange('campaign', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-48"
                         >
                           <option value="">Aus Bibliothek wählen</option>
                           {campaigns.filter(c => !c.archived).map(campaign => (
@@ -273,40 +264,36 @@ const UTMBuilder = () => {
                         </select>
                       </div>
                       {validationErrors.campaign && (
-                        <p className="text-red-500 text-xs mt-1">{validationErrors.campaign}</p>
+                        <p className="error-message">{validationErrors.campaign}</p>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">UTM Content (optional)</label>
+                      <label>UTM Content (optional)</label>
                       <input
                         type="text"
                         value={utmParams.content}
                         onChange={(e) => handleParamChange('content', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          validationErrors.content ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                        className={validationErrors.content ? 'error' : ''}
                         placeholder="banner_header"
                       />
                       {validationErrors.content && (
-                        <p className="text-red-500 text-xs mt-1">{validationErrors.content}</p>
+                        <p className="error-message">{validationErrors.content}</p>
                       )}
                     </div>
 
                     {channels[selectedChannel]?.showTerm && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">UTM Term (für SEA)</label>
+                        <label>UTM Term (für SEA)</label>
                         <input
                           type="text"
                           value={utmParams.term}
                           onChange={(e) => handleParamChange('term', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            validationErrors.term ? 'border-red-500' : 'border-gray-300'
-                          }`}
+                          className={validationErrors.term ? 'error' : ''}
                           placeholder="keyword"
                         />
                         {validationErrors.term && (
-                          <p className="text-red-500 text-xs mt-1">{validationErrors.term}</p>
+                          <p className="error-message">{validationErrors.term}</p>
                         )}
                       </div>
                     )}
@@ -314,28 +301,24 @@ const UTMBuilder = () => {
                 )}
 
                 {canGenerateUrl && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="font-medium text-gray-700 mb-2">Generierte URL:</h3>
-                    <div className="flex items-center gap-2">
+                  <div className="generated-url-container">
+                    <h3>Generierte URL:</h3>
+                    <div className="flex items-center gap-3">
                       <input
                         type="text"
                         value={generateUrl()}
                         readOnly
-                        className="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-md"
+                        className="flex-1 px-4 py-3 text-sm bg-white border border-[var(--border-color)] rounded-lg"
                       />
                       <button
                         onClick={copyToClipboard}
-                        className={`px-4 py-2 rounded-md transition-colors ${
-                          copySuccess
-                            ? 'bg-green-500 text-white'
-                            : 'bg-blue-500 text-white hover:bg-blue-600'
-                        }`}
+                        className={copySuccess ? 'success' : 'primary'}
                       >
                         {copySuccess ? <Check size={16} /> : <Copy size={16} />}
                       </button>
                     </div>
                     {copySuccess && (
-                      <p className="text-green-600 text-sm mt-2">✓ URL in Zwischenablage kopiert!</p>
+                      <p className="text-[var(--success-color)] text-sm mt-2">✓ URL in Zwischenablage kopiert!</p>
                     )}
                   </div>
                 )}
@@ -344,24 +327,24 @@ const UTMBuilder = () => {
 
             {/* Campaign Library */}
             <div>
-              <h2 className="text-xl font-semibold mb-4">Kampagnen-Bibliothek</h2>
+              <h2>Kampagnen-Bibliothek</h2>
               
               {/* Add new campaign */}
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-medium mb-3">Neue Kampagne hinzufügen</h3>
-                <div className="space-y-2">
+              <div className="mb-6 p-6 bg-gray-50 rounded-lg border border-[var(--border-color)]">
+                <h3>Neue Kampagne hinzufügen</h3>
+                <div className="space-y-3">
                   <input
                     type="text"
                     placeholder="Kampagnenname (z.B. 2025_08_urlaubsrabatt_01)"
                     value={newCampaign.name}
                     onChange={(e) => setNewCampaign(prev => ({...prev, name: e.target.value}))}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <select
                       value={newCampaign.category}
                       onChange={(e) => setNewCampaign(prev => ({...prev, category: e.target.value}))}
-                      className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1"
                     >
                       <option value="">Kategorie wählen</option>
                       {categories.map(cat => (
@@ -371,7 +354,7 @@ const UTMBuilder = () => {
                     <button
                       onClick={addCampaign}
                       disabled={!newCampaign.name || !newCampaign.category}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      className="primary"
                     >
                       <Plus size={16} />
                     </button>
@@ -380,33 +363,29 @@ const UTMBuilder = () => {
               </div>
 
               {/* Search and filter */}
-              <div className="flex gap-2 mb-4">
-                <div className="flex-1 relative">
-                  <Search size={16} className="absolute left-3 top-3 text-gray-400" />
+              <div className="flex gap-3 mb-6">
+                <div className="search-container">
+                  <Search size={16} className="search-icon" />
                   <input
                     type="text"
                     placeholder="Kampagnen durchsuchen..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="search-input"
                   />
                 </div>
                 <button
                   onClick={() => setShowArchived(!showArchived)}
-                  className={`px-4 py-2 text-sm rounded-md transition-colors ${
-                    showArchived
-                      ? 'bg-gray-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                  className={showArchived ? 'bg-gray-500 text-white' : 'secondary'}
                 >
                   <Archive size={16} />
                 </button>
               </div>
 
               {/* Campaign list */}
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="campaign-list">
                 {filteredCampaigns.map(campaign => (
-                  <div key={campaign.id} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:shadow-sm">
+                  <div key={campaign.id} className="campaign-item">
                     <div className="flex-1">
                       {editingCampaign === campaign.id ? (
                         <div className="space-y-2">
@@ -416,14 +395,14 @@ const UTMBuilder = () => {
                             onChange={(e) => setCampaigns(prev => prev.map(c => 
                               c.id === campaign.id ? {...c, name: e.target.value} : c
                             ))}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="w-full px-2 py-1 text-sm border border-[var(--border-color)] rounded-lg"
                           />
                           <select
                             value={campaign.category}
                             onChange={(e) => setCampaigns(prev => prev.map(c => 
                               c.id === campaign.id ? {...c, category: e.target.value} : c
                             ))}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="w-full px-2 py-1 text-sm border border-[var(--border-color)] rounded-lg"
                           >
                             {categories.map(cat => (
                               <option key={cat} value={cat}>{cat}</option>
@@ -437,18 +416,18 @@ const UTMBuilder = () => {
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 ml-3">
+                    <div className="flex items-center gap-2 ml-3">
                       {editingCampaign === campaign.id ? (
                         <>
                           <button
                             onClick={() => updateCampaign(campaign.id, campaign)}
-                            className="p-1 text-green-600 hover:bg-green-100 rounded"
+                            className="icon text-[var(--success-color)]"
                           >
                             <Check size={14} />
                           </button>
                           <button
                             onClick={() => setEditingCampaign(null)}
-                            className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                            className="icon text-gray-600"
                           >
                             <X size={14} />
                           </button>
@@ -457,23 +436,19 @@ const UTMBuilder = () => {
                         <>
                           <button
                             onClick={() => setEditingCampaign(campaign.id)}
-                            className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                            className="icon text-gray-600"
                           >
                             <Edit3 size={14} />
                           </button>
                           <button
                             onClick={() => toggleArchive(campaign.id)}
-                            className={`p-1 rounded ${
-                              campaign.archived
-                                ? 'text-blue-600 hover:bg-blue-100'
-                                : 'text-orange-600 hover:bg-orange-100'
-                            }`}
+                            className={`icon ${campaign.archived ? 'text-blue-600' : 'text-orange-600'}`}
                           >
                             <Archive size={14} />
                           </button>
                           <button
                             onClick={() => deleteCampaign(campaign.id)}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded"
+                            className="danger"
                           >
                             <Trash2 size={14} />
                           </button>
