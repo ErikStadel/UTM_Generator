@@ -1,8 +1,4 @@
 /* App.css - Modernes, desktop-optimiertes Styling für UTM Builder */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 :root {
   --primary-color: #2563eb; /* Blau für primäre Aktionen */
   --secondary-color: #4b5563; /* Grau für sekundäre Elemente */
