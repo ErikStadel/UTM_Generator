@@ -7,8 +7,10 @@ const sql = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   try {
+    console.log('API aufgerufen:', req.method, process.env.DATABASE_URL); // Debug-Log
     if (req.method === 'GET') {
       const result = await sql`SELECT * FROM campaigns;`;
+      console.log('Datenbankergebnis:', result.rows); // Debug-Log
       return res.status(200).json(result.rows);
     }
 
@@ -50,7 +52,7 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Methode nicht erlaubt' });
   } catch (error) {
-    console.error('Datenbankfehler:', error);
+    console.error('Datenbankfehler:', error.message);
     return res.status(500).json({ error: 'Interner Serverfehler' });
   }
 }

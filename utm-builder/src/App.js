@@ -232,10 +232,11 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
     const fetchCampaigns = async () => {
       try {
         const response = await fetch('/api/campaigns');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         setCampaigns(data);
       } catch (error) {
-        console.error('Fehler beim Laden der Kampagnen:', error);
+        console.error('Fehler beim Laden der Kampagnen:', error.message);
       }
     };
     fetchCampaigns();
@@ -251,11 +252,12 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: newCampaign.name, category: newCampaign.category })
           });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const newCamp = await response.json();
           setCampaigns(prev => [...prev, newCamp]);
           setNewCampaign({ name: '', category: '', archived: false });
         } catch (error) {
-          console.error('Fehler beim Hinzufügen der Kampagne:', error);
+          console.error('Fehler beim Hinzufügen der Kampagne:', error.message);
         }
       }
     }
@@ -263,14 +265,15 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
 
   const deleteCampaign = async (id) => {
     try {
-      await fetch('/api/campaigns', {
+      const response = await fetch('/api/campaigns', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       setCampaigns(prev => prev.filter(c => c.id !== id));
     } catch (error) {
-      console.error('Fehler beim Löschen der Kampagne:', error);
+      console.error('Fehler beim Löschen der Kampagne:', error.message);
     }
   };
 
@@ -282,10 +285,11 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...campaign, archived: !campaign.archived })
       });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const updated = await response.json();
       setCampaigns(prev => prev.map(c => c.id === id ? updated : c));
     } catch (error) {
-      console.error('Fehler beim Archivieren der Kampagne:', error);
+      console.error('Fehler beim Archivieren der Kampagne:', error.message);
     }
   };
 
@@ -296,11 +300,12 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, ...updatedCampaign })
       });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const updated = await response.json();
       setCampaigns(prev => prev.map(c => c.id === id ? updated : c));
       setEditingCampaign(null);
     } catch (error) {
-      console.error('Fehler beim Aktualisieren der Kampagne:', error);
+      console.error('Fehler beim Aktualisieren der Kampagne:', error.message);
     }
   };
 
