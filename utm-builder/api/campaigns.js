@@ -10,11 +10,13 @@ export default async function handler(req, res) {
     console.log('API aufgerufen:', req.method, process.env.DATABASE_URL); // Debug-Log
     if (req.method === 'GET') {
       const result = await sql`SELECT * FROM campaigns;`;
-      console.log('Datenbankergebnis:', result.rows); // Debug-Log
-      if (result.rows.length === 0) {
+      console.log('Rohdatenbankergebnis:', result); // Debug-Log für die genaue Struktur
+      const rows = Array.isArray(result) ? result : result.rows || [];
+      console.log('Verarbeitetes Ergebnis:', rows); // Debug-Log nach Verarbeitung
+      if (rows.length === 0) {
         console.log('Keine Daten in der Tabelle gefunden.');
       }
-      return res.status(200).json(result.rows);
+      return res.status(200).json(rows);
     }
 
     if (req.method === 'POST') {
@@ -27,7 +29,8 @@ export default async function handler(req, res) {
         VALUES (${name}, ${category}, FALSE)
         RETURNING *;
       `;
-      return res.status(201).json(result.rows[0]);
+      const rows = Array.isArray(result) ? result : result.rows || [];
+      return res.status(201).json(rows[0]);
     }
 
     if (req.method === 'PUT') {
@@ -41,7 +44,8 @@ export default async function handler(req, res) {
         WHERE id = ${id}
         RETURNING *;
       `;
-      return res.status(200).json(result.rows[0]);
+      const rows = Array.isArray(result) ? result : result.rows || [];
+      return res.status(200).json(rows[0]);
     }
 
     if (req.method === 'DELETE') {
