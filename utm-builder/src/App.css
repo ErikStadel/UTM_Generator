@@ -37,6 +37,9 @@
   .menu-item {
     @apply block px-4 py-3 text-[var(--text-color)] hover:bg-gray-700 transition-colors duration-200;
   }
+  .content-container {
+    @apply mt-6; /* Margin zwischen Header und Card */
+  }
 }
 
 body {

@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Copy, Search, Archive, Plus, Trash2, Edit3, Check, X, Menu } from 'lucide-react';
 import './App.css';
 
-const UTMBuilder = () => {
+const UTMBuilder = ({ campaigns, setCampaigns }) => {
   const [selectedChannel, setSelectedChannel] = useState('');
   const [utmParams, setUtmParams] = useState({
     source: '',
@@ -12,10 +12,10 @@ const UTMBuilder = () => {
     content: '',
     term: ''
   });
-  const [campaigns, setCampaigns] = useState([]);
   const [baseUrl, setBaseUrl] = useState('https://example.com');
   const [copySuccess, setCopySuccess] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const channels = {
     'Google Ads': { source: 'google', medium: 'cpc', showTerm: true },
@@ -30,15 +30,6 @@ const UTMBuilder = () => {
     'Push': { source: 'website', medium: 'push', showTerm: false }
   };
 
-  useEffect(() => {
-    const savedCampaigns = [
-      { id: 1, name: '2025_08_urlaubsrabatt_01', category: 'Rabattaktionen', archived: false },
-      { id: 2, name: '2025_08_trikotgewinnspiel_liga2_01_männlich', category: 'Gewinnspiele', archived: false },
-      { id: 3, name: '2025_07_sommerschlussverkauf_01', category: 'Saisonale Aktionen', archived: true }
-    ];
-    setCampaigns(savedCampaigns);
-  }, []);
-
   const handleChannelChange = (channel) => {
     setSelectedChannel(channel);
     const channelData = channels[channel];
@@ -48,6 +39,7 @@ const UTMBuilder = () => {
       medium: channelData.medium,
       term: channelData.showTerm ? prev.term : ''
     }));
+    setValidationErrors({});
   };
 
   const validateNomenclature = (value, field) => {
@@ -98,7 +90,6 @@ const UTMBuilder = () => {
     }
   };
 
-  const [validationErrors, setValidationErrors] = useState({});
   const hasValidationErrors = Object.values(validationErrors).some(error => error !== null && error !== undefined);
   const canGenerateUrl = selectedChannel && utmParams.source && utmParams.medium && utmParams.campaign && !hasValidationErrors;
 
@@ -115,7 +106,7 @@ const UTMBuilder = () => {
       <div className={`menu ${menuOpen ? 'menu-open' : ''}`}>
         <Link to="/library" onClick={() => setMenuOpen(false)} className="menu-item">Bibliothek</Link>
       </div>
-      <div className="container">
+      <div className="container content-container">
         <div className="card">
           <p>Erstelle konsistente UTM-Parameter für alle Marketing-Channels</p>
           <div>
@@ -237,32 +228,80 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
   const [editingCampaign, setEditingCampaign] = useState(null);
   const categories = ['Saisonale Aktionen', 'Produktlaunches', 'Gewinnspiele', 'Rabattaktionen', 'Brand Awareness', 'Sonstiges'];
 
-  const addCampaign = () => {
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const response = await fetch('/api/campaigns');
+        const data = await response.json();
+        setCampaigns(data);
+      } catch (error) {
+        console.error('Fehler beim Laden der Kampagnen:', error);
+      }
+    };
+    fetchCampaigns();
+  }, []);
+
+  const addCampaign = async () => {
     if (newCampaign.name && newCampaign.category) {
       const errors = validateNomenclature(newCampaign.name, 'campaign');
       if (Object.keys(errors).length === 0) {
-        setCampaigns(prev => [...prev, {
-          id: Date.now(),
-          name: newCampaign.name,
-          category: newCampaign.category,
-          archived: false
-        }]);
-        setNewCampaign({ name: '', category: '', archived: false });
+        try {
+          const response = await fetch('/api/campaigns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newCampaign.name, category: newCampaign.category })
+          });
+          const newCamp = await response.json();
+          setCampaigns(prev => [...prev, newCamp]);
+          setNewCampaign({ name: '', category: '', archived: false });
+        } catch (error) {
+          console.error('Fehler beim Hinzufügen der Kampagne:', error);
+        }
       }
     }
   };
 
-  const deleteCampaign = (id) => {
-    setCampaigns(prev => prev.filter(c => c.id !== id));
+  const deleteCampaign = async (id) => {
+    try {
+      await fetch('/api/campaigns', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Fehler beim Löschen der Kampagne:', error);
+    }
   };
 
-  const toggleArchive = (id) => {
-    setCampaigns(prev => prev.map(c => c.id === id ? { ...c, archived: !c.archived } : c));
+  const toggleArchive = async (id) => {
+    const campaign = campaigns.find(c => c.id === id);
+    try {
+      const response = await fetch('/api/campaigns', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...campaign, archived: !campaign.archived })
+      });
+      const updated = await response.json();
+      setCampaigns(prev => prev.map(c => c.id === id ? updated : c));
+    } catch (error) {
+      console.error('Fehler beim Archivieren der Kampagne:', error);
+    }
   };
 
-  const updateCampaign = (id, updatedCampaign) => {
-    setCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...updatedCampaign } : c));
-    setEditingCampaign(null);
+  const updateCampaign = async (id, updatedCampaign) => {
+    try {
+      const response = await fetch('/api/campaigns', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updatedCampaign })
+      });
+      const updated = await response.json();
+      setCampaigns(prev => prev.map(c => c.id === id ? updated : c));
+      setEditingCampaign(null);
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren der Kampagne:', error);
+    }
   };
 
   const validateNomenclature = (value, field) => {
@@ -292,7 +331,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
           <Link to="/" className="icon"><X size={24} /></Link>
         </div>
       </header>
-      <div className="container">
+      <div className="container content-container">
         <div className="card">
           <div>
             <h2>Kampagnen-Bibliothek</h2>
@@ -406,7 +445,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
                           onClick={() => toggleArchive(campaign.id)}
                           className={`icon ${campaign.archived ? 'text-blue-600' : 'text-orange-600'}`}
                         >
-                          <Archive size=14} />
+                          <Archive size={14} />
                         </button>
                         <button
                           onClick={() => deleteCampaign(campaign.id)}
