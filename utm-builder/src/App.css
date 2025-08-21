@@ -26,7 +26,16 @@
     border-color: var(--border-color) !important;
   }
   .border-custom:hover {
-    border-color: rgba(75, 85, 99, 0.6); /* Etwas heller für Feedback */
+    border-color: rgba(75, 85, 99, 0.6);
+  }
+  .menu {
+    @apply fixed top-0 right-0 h-full w-64 bg-[var(--card-background)] border-l border-[var(--border-color)] transform translate-x-full transition-transform duration-300;
+  }
+  .menu-open {
+    @apply translate-x-0;
+  }
+  .menu-item {
+    @apply block px-4 py-3 text-[var(--text-color)] hover:bg-gray-700 transition-colors duration-200;
   }
 }
 
@@ -126,7 +135,6 @@ button.icon {
   @apply w-full pl-10 pr-3 py-2 text-sm bg-[var(--background-color)] text-[var(--text-color)] border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition duration-300;
 }
 
-/* Benutzerdefinierter Scrollbar für Kampagnenliste */
 .campaign-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -139,20 +147,16 @@ button.icon {
   @apply bg-[var(--secondary-color)] rounded hover:bg-gray-500;
 }
 
-/* Responsive Anpassungen */
 @media (max-width: 1024px) {
   .container {
     @apply px-4;
   }
-
   h1 {
     @apply text-3xl;
   }
-
   h2 {
     @apply text-xl;
   }
-
   .card {
     @apply p-6;
   }
@@ -162,12 +166,13 @@ button.icon {
   input, select, button {
     @apply text-sm;
   }
-
   .generated-url-container {
     @apply p-4;
   }
-
   .campaign-item {
     @apply p-3;
+  }
+  .menu {
+    @apply w-80;
   }
 }
