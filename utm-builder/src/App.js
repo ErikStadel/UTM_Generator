@@ -20,10 +20,10 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
   const channels = {
     'Google Ads': { source: 'google', medium: 'cpc', showTerm: true },
     'Bing Ads': { source: 'bing', medium: 'cpc', showTerm: true },
-    'Facebook Ads': { source: 'facebook', medium: 'paid', showTerm: false },
-    'Tiktok Ads': { source: 'tiktok', medium: 'paid', showTerm: false },
+    'Facebook Ads': { source: '{{site_source_name}}', medium: 'cpc', showTerm: false },
+    'Tiktok Ads': { source: 'tiktok', medium: 'cpc', showTerm: false },
     'Email': { source: 'newsletter', medium: 'email', showTerm: false },
-    'Social Organic': { source: 'organic', medium: 'social', showTerm: false },
+    'Social Organic': { source: '{{site_source_name}}', medium: 'organic', showTerm: false },
     'SEO': { source: 'google', medium: 'organic', showTerm: false },
     'Affiliate': { source: 'affiliate', medium: 'referral', showTerm: false },
     'Koop': { source: 'partner', medium: 'koop', showTerm: false },
@@ -37,32 +37,35 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
       ...prev,
       source: channelData.source,
       medium: channelData.medium,
-      term: channelData.showTerm ? prev.term : ''
+      term: channelData.showTerm ? '{keyword}' : ''
     }));
     setValidationErrors({});
   };
 
-  const validateNomenclature = (value, field) => {
+  const validateNomenclature = (value, field, isLibraryScreen = false) => {
     const errors = {};
-    if (field === 'campaign' && value) {
-      const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*_[a-z0-9][a-z0-9_]*$/;
-      if (!pattern.test(value)) errors.campaign = 'Format: YYYY_MM_aktion_variante';
-      if (/[A-Z]/.test(value)) errors.campaign = 'Nur Kleinbuchstaben';
-      if (/\s/.test(value)) errors.campaign = 'Keine Leerzeichen';
-      if (/[^a-z0-9_]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche';
-    }
-    if (field === 'content' && value && /[A-Z\s]/.test(value)) {
-      errors.content = 'Nur Kleinbuchstaben und Unterstriche';
-    }
-    if (field === 'term' && value && /[A-Z\s]/.test(value)) {
-      errors.term = 'Nur Kleinbuchstaben und Unterstriche';
+    if (value) {
+      if (/[A-Z]/.test(value)) errors[field] = 'Nur Kleinbuchstaben';
+      if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
+      if (/[^a-z0-9_{}]/.test(value)) errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      if (field === 'campaign') {
+        if (isLibraryScreen) {
+          const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*(_[a-z0-9][a-z0-9_]*)?$/;
+          if (!pattern.test(value)) errors.campaign = 'Format: YYYY_MM_aktion[_variante]';
+        } else {
+          if (/[^a-z0-9_{}]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+        }
+      }
+      if ((field === 'content' || field === 'term') && /[^a-z0-9_{}]/.test(value)) {
+        errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      }
     }
     return errors;
   };
 
   const handleParamChange = (field, value) => {
     setUtmParams(prev => ({ ...prev, [field]: value }));
-    const errors = validateNomenclature(value, field);
+    const errors = validateNomenclature(value, field, false);
     setValidationErrors(prev => ({ ...prev, ...errors, [field]: errors[field] || null }));
   };
 
@@ -148,8 +151,8 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
                     </div>
                   </div>
                   <div>
-                    <label>UTM Campaign * <span className="text-xs text-gray-500 ml-2">Format: YYYY_MM_aktion_variante</span></label>
-                    <div className="flex gap-2">
+                    <label>UTM Campaign * <span className="text-xs text-gray-500 ml-2">Nur Kleinbuchstaben, Zahlen, Unterstriche und {}</span></label>
+                    <div className="flex gap-4">
                       <input
                         type="text"
                         value={utmParams.campaign}
@@ -160,7 +163,7 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
                       <select
                         value=""
                         onChange={(e) => handleParamChange('campaign', e.target.value)}
-                        className="w-48"
+                        className="flex-1"
                       >
                         <option value="">Aus Bibliothek wählen</option>
                         {campaigns.filter(c => !c.archived).map(campaign => (
@@ -172,13 +175,29 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
                   </div>
                   <div>
                     <label>UTM Content (optional)</label>
-                    <input
-                      type="text"
-                      value={utmParams.content}
-                      onChange={(e) => handleParamChange('content', e.target.value)}
-                      className={validationErrors.content ? 'error' : ''}
-                      placeholder="banner_header"
-                    />
+                    {selectedChannel === 'Facebook Ads' || selectedChannel === 'Tiktok Ads' ? (
+                      <input
+                        type="text"
+                        value={utmParams.content}
+                        onChange={(e) => handleParamChange('content', e.target.value)}
+                        className={`w-full ${validationErrors.content ? 'error' : ''} appearance-none border border-gray-300 rounded-lg p-2`}
+                        placeholder="banner_header"
+                        list="contentSuggestions"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={utmParams.content}
+                        onChange={(e) => handleParamChange('content', e.target.value)}
+                        className={validationErrors.content ? 'error' : ''}
+                        placeholder="banner_header"
+                      />
+                    )}
+                    {(selectedChannel === 'Facebook Ads' || selectedChannel === 'Tiktok Ads') && (
+                      <datalist id="contentSuggestions">
+                        <option value="{{placement}}" />
+                      </datalist>
+                    )}
                     {validationErrors.content && <p className="error-message">{validationErrors.content}</p>}
                   </div>
                   {channels[selectedChannel]?.showTerm && (
@@ -226,6 +245,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
   const [showArchived, setShowArchived] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', category: '', archived: false });
   const [editingCampaign, setEditingCampaign] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
   const categories = ['Saisonale Aktionen', 'Produktlaunches', 'Gewinnspiele', 'Rabattaktionen', 'Brand Awareness', 'Sonstiges'];
 
   useEffect(() => {
@@ -244,7 +264,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
 
   const addCampaign = async () => {
     if (newCampaign.name && newCampaign.category) {
-      const errors = validateNomenclature(newCampaign.name, 'campaign');
+      const errors = validateNomenclature(newCampaign.name, 'campaign', true);
       if (Object.keys(errors).length === 0) {
         try {
           const response = await fetch('/api/campaigns', {
@@ -256,9 +276,12 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
           const newCamp = await response.json();
           setCampaigns(prev => [...prev, newCamp]);
           setNewCampaign({ name: '', category: '', archived: false });
+          setValidationErrors({});
         } catch (error) {
           console.error('Fehler beim Hinzufügen der Kampagne:', error.message);
         }
+      } else {
+        setValidationErrors(errors);
       }
     }
   };
@@ -309,14 +332,23 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
     }
   };
 
-  const validateNomenclature = (value, field) => {
+  const validateNomenclature = (value, field, isLibraryScreen = false) => {
     const errors = {};
-    if (field === 'campaign' && value) {
-      const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*_[a-z0-9][a-z0-9_]*$/;
-      if (!pattern.test(value)) errors.campaign = 'Format: YYYY_MM_aktion_variante';
-      if (/[A-Z]/.test(value)) errors.campaign = 'Nur Kleinbuchstaben';
-      if (/\s/.test(value)) errors.campaign = 'Keine Leerzeichen';
-      if (/[^a-z0-9_]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche';
+    if (value) {
+      if (/[A-Z]/.test(value)) errors[field] = 'Nur Kleinbuchstaben';
+      if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
+      if (/[^a-z0-9_{}]/.test(value)) errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      if (field === 'campaign') {
+        if (isLibraryScreen) {
+          const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*(_[a-z0-9][a-z0-9_]*)?$/;
+          if (!pattern.test(value)) errors.campaign = 'Format: YYYY_MM_aktion[_variante]';
+        } else {
+          if (/[^a-z0-9_{}]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+        }
+      }
+      if ((field === 'content' || field === 'term') && /[^a-z0-9_{}]/.test(value)) {
+        errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      }
     }
     return errors;
   };
@@ -341,19 +373,27 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
           <div>
             <h2>Kampagnen-Bibliothek</h2>
             <div className="mb-6 p-6 bg-[var(--card-background)] rounded-lg border border-custom shadow-lg">
-              <h3>Neue Kampagne hinzufügen</h3>
+              <h3>Neue Kampagne hinzufügen <span className="text-xs text-gray-500 ml-2">Format: YYYY_MM_aktion[_variante]</span></h3>
               <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Kampagnenname (z.B. 2025_08_urlaubsrabatt_01)"
-                  value={newCampaign.name}
-                  onChange={(e) => setNewCampaign(prev => ({...prev, name: e.target.value}))}
-                  className="w-full"
-                />
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Kampagnenname (z.B. 2025_08_urlaubsrabatt_01)"
+                    value={newCampaign.name}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setNewCampaign(prev => ({ ...prev, name: newValue }));
+                      const errors = validateNomenclature(newValue, 'campaign', true);
+                      setValidationErrors(errors);
+                    }}
+                    className={`w-full ${validationErrors.campaign ? 'error' : ''}`}
+                  />
+                  {validationErrors.campaign && <p className="error-message">{validationErrors.campaign}</p>}
+                </div>
                 <div className="flex gap-3">
                   <select
                     value={newCampaign.category}
-                    onChange={(e) => setNewCampaign(prev => ({...prev, category: e.target.value}))}
+                    onChange={(e) => setNewCampaign(prev => ({ ...prev, category: e.target.value }))}
                     className="flex-1"
                   >
                     <option value="">Kategorie wählen</option>
@@ -363,7 +403,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
                   </select>
                   <button
                     onClick={addCampaign}
-                    disabled={!newCampaign.name || !newCampaign.category}
+                    disabled={!newCampaign.name || !newCampaign.category || Object.keys(validationErrors).length > 0}
                     className="primary"
                   >
                     <Plus size={16} />
@@ -398,15 +438,20 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
                         <input
                           type="text"
                           value={campaign.name}
-                          onChange={(e) => setCampaigns(prev => prev.map(c => 
-                            c.id === campaign.id ? {...c, name: e.target.value} : c
-                          ))}
-                          className="w-full px-2 py-1 text-sm border border-[var(--border-color)] rounded-lg"
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setCampaigns(prev => prev.map(c => 
+                              c.id === campaign.id ? { ...c, name: newValue } : c
+                            ));
+                            const errors = validateNomenclature(newValue, 'campaign', true);
+                            setValidationErrors(errors);
+                          }}
+                          className={`w-full px-2 py-1 text-sm border border-[var(--border-color)] rounded-lg ${validationErrors.campaign ? 'error' : ''}`}
                         />
                         <select
                           value={campaign.category}
                           onChange={(e) => setCampaigns(prev => prev.map(c => 
-                            c.id === campaign.id ? {...c, category: e.target.value} : c
+                            c.id === campaign.id ? { ...c, category: e.target.value } : c
                           ))}
                           className="w-full px-2 py-1 text-sm border border-[var(--border-color)] rounded-lg"
                         >
@@ -428,6 +473,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
                         <button
                           onClick={() => updateCampaign(campaign.id, campaign)}
                           className="icon text-[var(--success-color)]"
+                          disabled={Object.keys(validationErrors).length > 0}
                         >
                           <Check size={14} />
                         </button>
