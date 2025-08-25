@@ -30,6 +30,20 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
     'Push': { source: 'website', medium: 'push', showTerm: false }
   };
 
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const response = await fetch('/api/campaigns');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setCampaigns(data);
+      } catch (error) {
+        console.error('Fehler beim Laden der Kampagnen:', error.message);
+      }
+    };
+    fetchCampaigns();
+  }, [setCampaigns]);
+
   const handleChannelChange = (channel) => {
     setSelectedChannel(channel);
     const channelData = channels[channel];
@@ -42,12 +56,12 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
     setValidationErrors({});
   };
 
-  const validateNomenclature = (value, field, isLibraryScreen = false) => {
+  const validateNomenclature = (value, field, isLibraryScreen = false, selectedChannel = '') => {
     const errors = {};
     if (value) {
-      if (/[A-Z]/.test(value)) errors[field] = 'Nur Kleinbuchstaben';
-      if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
       if (/[^a-z0-9_{}]/.test(value)) errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
+
       if (field === 'campaign') {
         if (isLibraryScreen) {
           const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*(_[a-z0-9][a-z0-9_]*)?$/;
@@ -56,8 +70,21 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
           if (/[^a-z0-9_{}]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
         }
       }
+
       if ((field === 'content' || field === 'term') && /[^a-z0-9_{}]/.test(value)) {
         errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      }
+
+      // Spezielle Validierung für utm_content bei Facebook/TikTok Ads
+      if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'TikTok Ads')) {
+        const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
+        if (!allowedDatalistValues.includes(value)) {
+          if (/[A-Z]/.test(value)) {
+            errors[field] = 'Nur Kleinbuchstaben erlaubt, es sei denn, der Wert stammt aus der Vorschlagsliste';
+          }
+        }
+      } else if (field === 'content' && /[A-Z]/.test(value)) {
+        errors[field] = 'Nur Kleinbuchstaben erlaubt';
       }
     }
     return errors;
@@ -65,7 +92,7 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
 
   const handleParamChange = (field, value) => {
     setUtmParams(prev => ({ ...prev, [field]: value }));
-    const errors = validateNomenclature(value, field, false);
+    const errors = validateNomenclature(value, field, false, selectedChannel);
     setValidationErrors(prev => ({ ...prev, ...errors, [field]: errors[field] || null }));
   };
 
@@ -195,7 +222,8 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
                     )}
                     {(selectedChannel === 'Facebook Ads' || selectedChannel === 'Tiktok Ads') && (
                       <datalist id="contentSuggestions">
-                        <option value="{{placement}}" />
+                        {selectedChannel === 'Facebook Ads' && <option value="{{placement}}" />}
+                        {selectedChannel === 'Tiktok Ads' && <option value="__PLACEMENT__" />}
                       </datalist>
                     )}
                     {validationErrors.content && <p className="error-message">{validationErrors.content}</p>}
@@ -247,20 +275,6 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
   const categories = ['Saisonale Aktionen', 'Produktlaunches', 'Gewinnspiele', 'Rabattaktionen', 'Brand Awareness', 'Sonstiges'];
-
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        const response = await fetch('/api/campaigns');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setCampaigns(data);
-      } catch (error) {
-        console.error('Fehler beim Laden der Kampagnen:', error.message);
-      }
-    };
-    fetchCampaigns();
-  }, []);
 
   const addCampaign = async () => {
     if (newCampaign.name && newCampaign.category) {
@@ -332,12 +346,12 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
     }
   };
 
-  const validateNomenclature = (value, field, isLibraryScreen = false) => {
+  const validateNomenclature = (value, field, isLibraryScreen = false, selectedChannel = '') => {
     const errors = {};
     if (value) {
-      if (/[A-Z]/.test(value)) errors[field] = 'Nur Kleinbuchstaben';
-      if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
       if (/[^a-z0-9_{}]/.test(value)) errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
+
       if (field === 'campaign') {
         if (isLibraryScreen) {
           const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*(_[a-z0-9][a-z0-9_]*)?$/;
@@ -346,8 +360,21 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
           if (/[^a-z0-9_{}]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
         }
       }
+
       if ((field === 'content' || field === 'term') && /[^a-z0-9_{}]/.test(value)) {
         errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      }
+
+      // Spezielle Validierung für utm_content bei Facebook/TikTok Ads
+      if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'TikTok Ads')) {
+        const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
+        if (!allowedDatalistValues.includes(value)) {
+          if (/[A-Z]/.test(value)) {
+            errors[field] = 'Nur Kleinbuchstaben erlaubt, es sei denn, der Wert stammt aus der Vorschlagsliste';
+          }
+        }
+      } else if (field === 'content' && /[A-Z]/.test(value)) {
+        errors[field] = 'Nur Kleinbuchstaben erlaubt';
       }
     }
     return errors;
