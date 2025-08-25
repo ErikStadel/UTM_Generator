@@ -506,7 +506,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
                         </button>
                         <button
                           onClick={() => setEditingCampaign(null)}
-                          className="icon text-gray-600"
+                          className="icon text-blue-300"
                         >
                           <X size={14} />
                         </button>
@@ -515,7 +515,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
                       <>
                         <button
                           onClick={() => setEditingCampaign(campaign.id)}
-                          className="icon text-gray-600"
+                          className="icon text-blue-300"
                         >
                           <Edit3 size={14} />
                         </button>
