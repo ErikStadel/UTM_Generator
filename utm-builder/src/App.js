@@ -134,7 +134,8 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
         </div>
       </header>
       <div className={`menu ${menuOpen ? 'menu-open' : ''}`}>
-        <Link to="/library" onClick={() => setMenuOpen(false)} className="menu-item">Bibliothek</Link>
+        <Link to="/library" onClick={() => setMenuOpen(false)} className="menu-item">Kampagnen</Link>
+        <Link to="/licenses" onClick={() => setMenuOpen(false)} className="menu-item">Lizenzen</Link>
       </div>
       <div className="container content-container">
         <div className="card">
@@ -549,6 +550,76 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
   );
 };
 
+const Licenses = () => {
+  const [licenses, setLicenses] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchLicenses = async () => {
+      try {
+        const response = await fetch(`/api/licenses?search=${searchTerm}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setLicenses(data);
+      } catch (error) {
+        console.error('Fehler beim Laden der Lizenzen:', error.message);
+      }
+    };
+    fetchLicenses();
+  }, [searchTerm]);
+
+  return (
+    <div className="min-h-screen bg-[var(--background-color)]">
+      <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
+        <div className="container flex justify-between items-center">
+          <h1>Lizenzen</h1>
+          <Link to="/" className="icon"><X size={24} /></Link>
+        </div>
+      </header>
+      <div className="container content-container">
+        <div className="card">
+          <div className="mb-6">
+            <div className="search-container">
+              <Search size={16} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Suche nach Kategorie, Name oder Tags..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+            </div>
+          </div>
+          {Object.keys(licenses).map(category => (
+            <div key={category} className="mb-6">
+              <h2 className="text-lg font-semibold mb-2">{category}</h2>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-[var(--card-background)]">
+                    <th className="border p-2 text-left">Name</th>
+                    <th className="border p-2 text-left">Tags</th>
+                    <th className="border p-2 text-left">UTM-Schreibweise</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {licenses[category].map((license, index) => (
+                    <tr key={index} className="border-t">
+                      <td className="p-2">{license.name}</td>
+                      <td className="p-2">{license.tags || '-'}</td>
+                      <td className="p-2">{license.utm_writing}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          {Object.keys(licenses).length === 0 && <p className="text-center text-gray-500 py-8">Keine Lizenzen gefunden</p>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const [campaigns, setCampaigns] = useState([]);
   return (
@@ -556,6 +627,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<UTMBuilder campaigns={campaigns} setCampaigns={setCampaigns} />} />
         <Route path="/library" element={<CampaignLibrary campaigns={campaigns} setCampaigns={setCampaigns} />} />
+        <Route path="/licenses" element={<Licenses />} />
       </Routes>
     </Router>
   );
