@@ -124,7 +124,7 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
   const canGenerateUrl = selectedChannel && utmParams.source && utmParams.medium && utmParams.campaign && !hasValidationErrors;
 
   return (
-    <div className="min-h-screen bg-[var(--background-color)]">
+    <div className="min-h-screen bg-[var(--background-color)] relative">
       <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
         <div className="container flex justify-between items-center">
           <h1>UTM Parameter Builder</h1>
@@ -134,10 +134,13 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
         </div>
       </header>
       <div className={`menu ${menuOpen ? 'menu-open' : ''}`}>
+        <button onClick={() => setMenuOpen(false)} className="icon absolute top-4 right-4">
+          <X size={24} />
+        </button>
         <Link to="/library" onClick={() => setMenuOpen(false)} className="menu-item">Kampagnen</Link>
         <Link to="/licenses" onClick={() => setMenuOpen(false)} className="menu-item">Lizenzen</Link>
       </div>
-      <div className="container content-container">
+      <div className="container content-container relative z-10">
         <div className="card">
           <p>Erstelle konsistente UTM-Parameter für alle Marketing-Channels</p>
           <div>
@@ -208,7 +211,7 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
                         type="text"
                         value={utmParams.content}
                         onChange={(e) => handleParamChange('content', e.target.value)}
-                        className={`w-full ${validationErrors.content ? 'error' : ''} appearance-none border border-gray-300 rounded-lg p-2`}
+                        className={`w-full ${validationErrors.content ? 'error' : ''} appearance-none border border-gray-30 rounded-lg p-2`}
                         placeholder="banner_header"
                         list="contentSuggestions"
                       />
@@ -252,7 +255,7 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
                       type="text"
                       value={generateUrl()}
                       readOnly
-                      className="flex-1 px-4 py-3 text-sm bg-white border border-[var(--border-color)] rounded-lg"
+                      className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
                     />
                     <button onClick={copyToClipboard} className={copySuccess ? 'success' : 'primary'}>
                       {copySuccess ? <Check size={16} /> : <Copy size={16} />}
@@ -553,6 +556,9 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
 const Licenses = () => {
   const [licenses, setLicenses] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newLicense, setNewLicense] = useState({ category: '', tags: '', name: '', utm_writing: '' });
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     const fetchLicenses = async () => {
@@ -568,6 +574,40 @@ const Licenses = () => {
     fetchLicenses();
   }, [searchTerm]);
 
+  const handleFilter = (category) => {
+    setSearchTerm(category);
+  };
+
+  const handleAddLicense = async () => {
+    if (!newLicense.category || !newLicense.name || !newLicense.utm_writing) {
+      setValidationErrors({ error: 'Kategorie, Name und UTM-Schreibweise erforderlich' });
+      return;
+    }
+    try {
+      const response = await fetch('/api/licenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLicense),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setLicenses(prev => {
+        const updated = { ...prev };
+        if (!updated[newLicense.category]) updated[newLicense.category] = [];
+        updated[newLicense.category].push(data);
+        return updated;
+      });
+      setShowAddModal(false);
+      setNewLicense({ category: '', tags: '', name: '', utm_writing: '' });
+      setValidationErrors({});
+    } catch (error) {
+      console.error('Fehler beim Hinzufügen:', error.message);
+      setValidationErrors({ error: 'Fehler beim Hinzufügen der Lizenz' });
+    }
+  };
+
+  const uniqueCategories = Object.keys(licenses).filter(cat => cat);
+
   return (
     <div className="min-h-screen bg-[var(--background-color)]">
       <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
@@ -578,21 +618,106 @@ const Licenses = () => {
       </header>
       <div className="container content-container">
         <div className="card">
-          <div className="mb-6">
-            <div className="search-container">
-              <Search size={16} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Suche nach Kategorie, Name oder Tags..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
+          <div className="mb-10">
+            <div className="search-container flex items-center justify-between">
+              <div className="flex items-center flex-1">
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Suche nach Kategorie, Name oder Tags..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="icon text-gray-600 hover:text-gray-800 ml-2"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
+            {uniqueCategories.length > 0 && (
+              <div className="flex gap-2 mt-4 flex-wrap">
+                {uniqueCategories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => handleFilter(cat)}
+                    className="px-3 py-1 bg-[var(--secondary-color)] text-sm rounded-lg hover:bg-opacity-80"
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="primary mb-4 flex items-center"
+          >
+            <Plus size={16} /> Neue Lizenz
+          </button>
+          {showAddModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md">
+                <h2 className="text-lg font-semibold mb-4">Neue Lizenz hinzufügen</h2>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Kategorie"
+                    value={newLicense.category}
+                    onChange={(e) => setNewLicense({ ...newLicense, category: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tags (optional)"
+                    value={newLicense.tags}
+                    onChange={(e) => setNewLicense({ ...newLicense, tags: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={newLicense.name}
+                    onChange={(e) => setNewLicense({ ...newLicense, name: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="UTM-Schreibweise"
+                    value={newLicense.utm_writing}
+                    onChange={(e) => setNewLicense({ ...newLicense, utm_writing: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  {validationErrors.error && <p className="text-red-500 text-sm">{validationErrors.error}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAddLicense}
+                      className="primary px-4 py-2 rounded-lg"
+                    >
+                      Hinzufügen
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setValidationErrors({});
+                        setNewLicense({ category: '', tags: '', name: '', utm_writing: '' });
+                      }}
+                      className="danger px-4 py-2 rounded-lg"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {Object.keys(licenses).map(category => (
-            <div key={category} className="mb-6">
-              <h2 className="text-lg font-semibold mb-2">{category}</h2>
+            <div key={category} className="mb-8">
+              <h2 className="text-xl font-semibold mb-4 text-center">{category}</h2>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-[var(--card-background)]">
@@ -603,7 +728,7 @@ const Licenses = () => {
                 </thead>
                 <tbody>
                   {licenses[category].map((license, index) => (
-                    <tr key={index} className="border-t">
+                    <tr key={index} className={`border-t ${index % 2 === 0 ? 'bg-gray-600' : ''}`}>
                       <td className="p-2">{license.name}</td>
                       <td className="p-2">{license.tags || '-'}</td>
                       <td className="p-2">{license.utm_writing}</td>
