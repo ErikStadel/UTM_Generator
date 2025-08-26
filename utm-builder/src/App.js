@@ -610,8 +610,8 @@ const Licenses = () => {
   };
 
   const handleEditLicense = async () => {
-    if (!editLicense.category || !editLicense.name || !editLicense.utm_writing) {
-      setValidationErrors({ error: 'Kategorie, Name und UTM-Schreibweise erforderlich' });
+    if (!editLicense?.id || !editLicense.category || !editLicense.name || !editLicense.utm_writing) {
+      setValidationErrors({ error: 'ID, Kategorie, Name und UTM-Schreibweise erforderlich' });
       return;
     }
     try {
@@ -640,6 +640,7 @@ const Licenses = () => {
 
   const handleDeleteLicense = async (id) => {
     try {
+      console.log('Löschen von ID:', id); // Debug-Log
       const response = await fetch('/api/licenses', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -777,28 +778,28 @@ const Licenses = () => {
                   <input
                     type="text"
                     placeholder="Kategorie"
-                    value={editLicense.category}
+                    value={editLicense.category || ''}
                     onChange={(e) => setEditLicense({ ...editLicense, category: e.target.value })}
                     className="w-full p-2 border rounded-lg"
                   />
                   <input
                     type="text"
                     placeholder="Tags (optional)"
-                    value={editLicense.tags}
+                    value={editLicense.tags || ''}
                     onChange={(e) => setEditLicense({ ...editLicense, tags: e.target.value })}
                     className="w-full p-2 border rounded-lg"
                   />
                   <input
                     type="text"
                     placeholder="Name"
-                    value={editLicense.name}
+                    value={editLicense.name || ''}
                     onChange={(e) => setEditLicense({ ...editLicense, name: e.target.value })}
                     className="w-full p-2 border rounded-lg"
                   />
                   <input
                     type="text"
                     placeholder="UTM-Schreibweise"
-                    value={editLicense.utm_writing}
+                    value={editLicense.utm_writing || ''}
                     onChange={(e) => setEditLicense({ ...editLicense, utm_writing: e.target.value })}
                     className="w-full p-2 border rounded-lg"
                   />
@@ -868,7 +869,7 @@ const Licenses = () => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
-                              setEditLicense(license);
+                              setEditLicense({ ...license }); // Sicherstellen, dass alle Felder kopiert werden
                               setShowEditModal(true);
                             }}
                             className="icon p-1 text-blue-300"
