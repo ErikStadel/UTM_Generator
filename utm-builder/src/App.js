@@ -675,7 +675,7 @@ const Licenses = () => {
         <div className="card">
           <div className="mb-10">
             <div className="search-container flex items-center justify-between">
-              <div className="flex items-center">
+              <div className="flex items-center flex-1">
                 <Search size={16} className="search-icon" />
                 <input
                   type="text"
@@ -688,7 +688,7 @@ const Licenses = () => {
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="icon text-gray-600 hover:text-gray-800 ml-2"
+                  className="danger icon ml-2"
                 >
                   <X size={16} />
                 </button>
@@ -869,7 +869,7 @@ const Licenses = () => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
-                              setEditLicense({ ...license }); // Sicherstellen, dass alle Felder kopiert werden
+                              setEditLicense({ ...license }); // Sicherstellen, dass alle Felder inkl. id kopiert werden
                               setShowEditModal(true);
                             }}
                             className="icon p-1 text-blue-300"

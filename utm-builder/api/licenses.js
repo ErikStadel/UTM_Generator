@@ -11,17 +11,17 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const searchTerm = req.query.search || '';
       const result = await sql`
-        SELECT category, name, tags, utm_writing
+        SELECT id, category, name, tags, utm_writing
         FROM licenses
         WHERE (category ILIKE ${`%${searchTerm}%`} OR name ILIKE ${`%${searchTerm}%`} OR tags ILIKE ${`%${searchTerm}%`})
-        GROUP BY category, name, tags, utm_writing
+        GROUP BY id, category, name, tags, utm_writing
         ORDER BY category, name;
       `;
       console.log('Rohdatenbankergebnis:', result); // Debug-Log
       const rows = Array.isArray(result) ? result : result.rows || [];
       const licensesByCategory = rows.reduce((acc, row) => {
         if (!acc[row.category]) acc[row.category] = [];
-        acc[row.category].push({ name: row.name, tags: row.tags, utm_writing: row.utm_writing });
+        acc[row.category].push({ id: row.id, name: row.name, tags: row.tags, utm_writing: row.utm_writing });
         return acc;
       }, {});
       console.log('Verarbeitetes Ergebnis:', licensesByCategory); // Debug-Log

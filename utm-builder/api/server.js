@@ -13,10 +13,10 @@ app.get('/api/licenses', async (req, res) => {
   try {
     const searchTerm = req.query.search || '';
     const result = await sql`
-      SELECT category, name, tags, utm_writing
+      SELECT id, category, name, tags, utm_writing
       FROM licenses
       WHERE (category ILIKE ${`%${searchTerm}%`} OR name ILIKE ${`%${searchTerm}%`} OR tags ILIKE ${`%${searchTerm}%`})
-      GROUP BY category, name, tags, utm_writing
+      GROUP BY id, category, name, tags, utm_writing
       ORDER BY category, name;
     `;
     const rows = Array.isArray(result) ? result : result.rows || [];
