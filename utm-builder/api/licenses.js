@@ -33,6 +33,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const { category, tags, name, utm_writing } = req.body;
+      console.log('POST-Daten:', { category, tags, name, utm_writing }); // Zusätzlicher Debug-Log
       if (!category || !name || !utm_writing) {
         return res.status(400).json({ error: 'Kategorie, Name und UTM-Schreibweise erforderlich' });
       }
@@ -41,6 +42,7 @@ export default async function handler(req, res) {
         VALUES (${category}, ${tags}, ${name}, ${utm_writing})
         RETURNING *;
       `;
+      console.log('INSERT-Ergebnis:', result); // Debug-Log für INSERT
       const rows = Array.isArray(result) ? result : result.rows || [];
       return res.status(201).json(rows[0]);
     }

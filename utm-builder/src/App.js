@@ -559,6 +559,9 @@ const Licenses = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newLicense, setNewLicense] = useState({ category: '', tags: '', name: '', utm_writing: '' });
   const [validationErrors, setValidationErrors] = useState({});
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editLicense, setEditLicense] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
   useEffect(() => {
     const fetchLicenses = async () => {
@@ -606,6 +609,57 @@ const Licenses = () => {
     }
   };
 
+  const handleEditLicense = async () => {
+    if (!editLicense.category || !editLicense.name || !editLicense.utm_writing) {
+      setValidationErrors({ error: 'Kategorie, Name und UTM-Schreibweise erforderlich' });
+      return;
+    }
+    try {
+      const response = await fetch('/api/licenses', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editLicense),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setLicenses(prev => {
+        const updated = { ...prev };
+        updated[editLicense.category] = updated[editLicense.category].map(l =>
+          l.id === data.id ? data : l
+        );
+        return updated;
+      });
+      setShowEditModal(false);
+      setEditLicense(null);
+      setValidationErrors({});
+    } catch (error) {
+      console.error('Fehler beim Bearbeiten:', error.message);
+      setValidationErrors({ error: 'Fehler beim Bearbeiten der Lizenz' });
+    }
+  };
+
+  const handleDeleteLicense = async (id) => {
+    try {
+      const response = await fetch('/api/licenses', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      setLicenses(prev => {
+        const updated = { ...prev };
+        for (let category in updated) {
+          updated[category] = updated[category].filter(l => l.id !== id);
+          if (updated[category].length === 0) delete updated[category];
+        }
+        return updated;
+      });
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      console.error('Fehler beim Löschen:', error.message);
+    }
+  };
+
   const uniqueCategories = Object.keys(licenses).filter(cat => cat);
 
   return (
@@ -620,7 +674,7 @@ const Licenses = () => {
         <div className="card">
           <div className="mb-10">
             <div className="search-container flex items-center justify-between">
-              <div className="flex items-center flex-1">
+              <div className="flex items-center">
                 <Search size={16} className="search-icon" />
                 <input
                   type="text"
@@ -715,23 +769,120 @@ const Licenses = () => {
               </div>
             </div>
           )}
+          {showEditModal && editLicense && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md">
+                <h2 className="text-lg font-semibold mb-4">Lizenz bearbeiten</h2>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Kategorie"
+                    value={editLicense.category}
+                    onChange={(e) => setEditLicense({ ...editLicense, category: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tags (optional)"
+                    value={editLicense.tags}
+                    onChange={(e) => setEditLicense({ ...editLicense, tags: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={editLicense.name}
+                    onChange={(e) => setEditLicense({ ...editLicense, name: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="UTM-Schreibweise"
+                    value={editLicense.utm_writing}
+                    onChange={(e) => setEditLicense({ ...editLicense, utm_writing: e.target.value })}
+                    className="w-full p-2 border rounded-lg"
+                  />
+                  {validationErrors.error && <p className="text-red-500 text-sm">{validationErrors.error}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleEditLicense}
+                      className="primary px-4 py-2 rounded-lg"
+                    >
+                      Speichern
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowEditModal(false);
+                        setValidationErrors({});
+                        setEditLicense(null);
+                      }}
+                      className="danger px-4 py-2 rounded-lg"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md text-center">
+                <h2 className="text-lg font-semibold mb-4">Lizenz löschen</h2>
+                <p>Sind Sie sicher, dass Sie diese Lizenz löschen möchten?</p>
+                <div className="flex gap-2 justify-center mt-4">
+                  <button
+                    onClick={() => handleDeleteLicense(showDeleteConfirm)}
+                    className="danger px-4 py-2 rounded-lg"
+                  >
+                    Ja, löschen
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(null)}
+                    className="secondary px-4 py-2 rounded-lg"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {Object.keys(licenses).map(category => (
             <div key={category} className="mb-8">
               <h2 className="text-xl font-semibold mb-4 text-center">{category}</h2>
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse table-fixed">
                 <thead>
                   <tr className="bg-[var(--card-background)]">
-                    <th className="border p-2 text-left">Name</th>
-                    <th className="border p-2 text-left">Tags</th>
-                    <th className="border p-2 text-left">UTM-Schreibweise</th>
+                    <th className="border p-2 text-left w-1/3">Name</th>
+                    <th className="border p-2 text-left w-1/3">Tags</th>
+                    <th className="border p-2 text-left w-1/3">UTM-Schreibweise</th>
                   </tr>
                 </thead>
                 <tbody>
                   {licenses[category].map((license, index) => (
                     <tr key={index} className={`border-t ${index % 2 === 0 ? 'bg-gray-600' : ''}`}>
-                      <td className="p-2">{license.name}</td>
-                      <td className="p-2">{license.tags || '-'}</td>
-                      <td className="p-2">{license.utm_writing}</td>
+                      <td className="p-2 break-words">{license.name}</td>
+                      <td className="p-2 break-words">{license.tags || '-'}</td>
+                      <td className="p-2 break-words flex justify-between">
+                        {license.utm_writing}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditLicense(license);
+                              setShowEditModal(true);
+                            }}
+                            className="icon p-1 text-blue-300"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            onClick={() => setShowDeleteConfirm(license.id)}
+                            className="danger icon p-1"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
