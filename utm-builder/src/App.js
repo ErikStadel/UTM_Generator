@@ -1150,36 +1150,28 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const validateToken = async () => {
-      try {
-        const token = Cookies.get('userToken');
-        console.log('Token beim Laden:', token); // Debugging
-        if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          console.log('Token-Payload:', payload); // Debugging
-          // Optional: Validieren mit Backend
-          const res = await fetch('/api/users/validate-token', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
-          });
-          if (res.ok) {
-            setUser({ name: payload.name, role: payload.role });
-          } else {
-            console.log('Token ungültig, lösche Cookie');
-            Cookies.remove('userToken');
-          }
-        }
-      } catch (err) {
-        console.error('Fehler beim Validieren des Tokens:', err);
-        Cookies.remove('userToken');
-      } finally {
-        setIsLoading(false);
+  const validateToken = async () => {
+    try {
+      // Kein Token mehr im Client lesen! Das übernimmt das Backend.
+      const res = await fetch('/api/users/validate-token', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUser({ name: data.name, role: data.role });
+      } else {
+        setUser(null);
       }
-    };
-    validateToken();
-  }, []);
+    } catch (err) {
+      console.error('Fehler beim Validieren des Tokens:', err);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  validateToken();
+}, []);
 
   const handleLogin = (userData) => {
     setUser(userData);
