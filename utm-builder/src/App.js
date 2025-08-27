@@ -722,14 +722,25 @@ const Licenses = () => {
   };
 
   const openEditModal = (license) => {
+    // Debug-Log um zu sehen, welche Daten ankommen
+    console.log('Opening edit modal for license:', license);
+    
     // Sicherstellen, dass alle Eigenschaften kopiert werden
-    setEditLicense({
+    // Kategorie aus dem Kategorien-Kontext extrahieren, falls nicht direkt verfügbar
+    const categoryFromContext = Object.keys(licenses).find(cat => 
+      licenses[cat] && licenses[cat].some(l => l.id === license.id)
+    );
+    
+    const licenseData = {
       id: license.id,
-      category: license.category || '',
+      category: license.category || categoryFromContext || '',
       tags: license.tags || '',
       name: license.name || '',
       utm_writing: license.utm_writing || ''
-    });
+    };
+    
+    console.log('Setting edit license data:', licenseData);
+    setEditLicense(licenseData);
     setShowEditModal(true);
     setValidationErrors({});
   };
@@ -909,26 +920,28 @@ const Licenses = () => {
               <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md">
                 <h2 className="text-lg font-semibold mb-4">Lizenz bearbeiten</h2>
                 <div className="space-y-4">
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Kategorie *"
-                      value={editLicense.category}
-                      onChange={(e) => setEditLicense({ ...editLicense, category: e.target.value })}
-                      className={`w-full p-2 border rounded-lg ${validationErrors.category ? 'border-red-500' : ''}`}
-                      disabled={isLoading}
-                      autoFocus
-                    />
-                    {validationErrors.category && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
-                    )}
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Kategorie *</label>
+                      <input
+                        type="text"
+                        placeholder="Kategorie *"
+                        value={editLicense.category || ''}
+                        onChange={(e) => setEditLicense({ ...editLicense, category: e.target.value })}
+                        className={`w-full p-2 border rounded-lg ${validationErrors.category ? 'border-red-500' : ''}`}
+                        disabled={isLoading}
+                        autoFocus
+                      />
+                      {validationErrors.category && (
+                        <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
+                      )}
+                    </div>
                   
                   <div>
+                    <label className="block text-sm font-medium mb-1">Tags (optional)</label>
                     <input
                       type="text"
                       placeholder="Tags (optional)"
-                      value={editLicense.tags}
+                      value={editLicense.tags || ''}
                       onChange={(e) => setEditLicense({ ...editLicense, tags: e.target.value })}
                       className="w-full p-2 border rounded-lg"
                       disabled={isLoading}
@@ -936,10 +949,11 @@ const Licenses = () => {
                   </div>
                   
                   <div>
+                    <label className="block text-sm font-medium mb-1">Name *</label>
                     <input
                       type="text"
                       placeholder="Name *"
-                      value={editLicense.name}
+                      value={editLicense.name || ''}
                       onChange={(e) => setEditLicense({ ...editLicense, name: e.target.value })}
                       className={`w-full p-2 border rounded-lg ${validationErrors.name ? 'border-red-500' : ''}`}
                       disabled={isLoading}
@@ -950,10 +964,11 @@ const Licenses = () => {
                   </div>
                   
                   <div>
+                    <label className="block text-sm font-medium mb-1">UTM-Schreibweise *</label>
                     <input
                       type="text"
                       placeholder="UTM-Schreibweise *"
-                      value={editLicense.utm_writing}
+                      value={editLicense.utm_writing || ''}
                       onChange={(e) => setEditLicense({ ...editLicense, utm_writing: e.target.value })}
                       className={`w-full p-2 border rounded-lg ${validationErrors.utm_writing ? 'border-red-500' : ''}`}
                       disabled={isLoading}
