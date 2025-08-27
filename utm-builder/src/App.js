@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Copy, Search, Archive, Plus, Trash2, Edit3, Check, X, Menu } from 'lucide-react';
 import './App.css';
@@ -565,7 +565,7 @@ const Licenses = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchLicenses = async () => {
+  const fetchLicenses = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/licenses?search=${encodeURIComponent(searchTerm)}`);
@@ -585,7 +585,7 @@ const Licenses = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchTerm]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -593,7 +593,7 @@ const Licenses = () => {
     }, 300); // Debounce für bessere Performance
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [fetchLicenses]);
 
   const handleFilter = (category) => {
     setSearchTerm(category);
