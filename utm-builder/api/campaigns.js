@@ -1,5 +1,20 @@
 import { neon } from '@neondatabase/serverless';
 import { config } from 'dotenv';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+
+function authenticate(req, res, next) {
+  const token = req.cookies.userToken;
+  if (!token) return res.status(401).json({ error: 'Nicht authentifiziert' });
+
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Ungültiges Token' });
+  }
+}
 
 config(); // Lädt .env-Variablen für lokale Tests
 

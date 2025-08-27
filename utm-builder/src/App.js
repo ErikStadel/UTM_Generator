@@ -1,9 +1,59 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Cookies from 'js-cookie';
 import { Copy, Search, Archive, Plus, Trash2, Edit3, Check, X, Menu } from 'lucide-react';
 import './App.css';
 
-const UTMBuilder = ({ campaigns, setCampaigns }) => {
+const Login = ({ onLogin }) => {
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    try {
+      const res = await fetch('/api/users/validate', {
+        method: 'POST',
+        credentials: 'include', // Cookie senden
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.toLowerCase() }), // Kleinbuchstaben erzwingen
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Login fehlgeschlagen');
+      }
+      onLogin(await res.json());
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleLogin();
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background-color)]">
+      <div className="card p-8 w-full max-w-md">
+        <h1 className="text-2xl mb-4 text-center">Login</h1>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value.toLowerCase())} // Kleinbuchstaben
+          onKeyDown={handleKeyDown}
+          placeholder="Dein Name"
+          className="mb-4 w-full"
+          autoFocus
+        />
+        {error && <p className="error-message mb-2 text-center">{error}</p>}
+        <button onClick={handleLogin} className="primary w-full">Anmelden</button>
+      </div>
+    </div>
+  );
+};
+
+const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   const [selectedChannel, setSelectedChannel] = useState('');
   const [utmParams, setUtmParams] = useState({
     source: '',
@@ -33,7 +83,7 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const response = await fetch('/api/campaigns');
+        const response = await fetch('/api/campaigns', { credentials: 'include' });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         setCampaigns(data);
@@ -75,7 +125,6 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
         errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
       }
 
-      // Spezielle Validierung für utm_content bei Facebook/TikTok Ads
       if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'TikTok Ads')) {
         const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
         if (!allowedDatalistValues.includes(value)) {
@@ -128,9 +177,12 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
       <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
         <div className="container flex justify-between items-center">
           <h1>UTM Parameter Builder</h1>
-          <button onClick={() => setMenuOpen(!menuOpen)} className="icon">
-            <Menu size={24} />
-          </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm">Eingeloggt als: {user.name}</span>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="icon">
+              <Menu size={24} />
+            </button>
+          </div>
         </div>
       </header>
       <div className={`menu ${menuOpen ? 'menu-open' : ''}`}>
@@ -272,7 +324,7 @@ const UTMBuilder = ({ campaigns, setCampaigns }) => {
   );
 };
 
-const CampaignLibrary = ({ campaigns, setCampaigns }) => {
+const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', category: '', archived: false });
@@ -287,6 +339,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
         try {
           const response = await fetch('/api/campaigns', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: newCampaign.name, category: newCampaign.category })
           });
@@ -308,6 +361,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
     try {
       const response = await fetch('/api/campaigns', {
         method: 'DELETE',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       });
@@ -323,6 +377,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
     try {
       const response = await fetch('/api/campaigns', {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...campaign, archived: !campaign.archived })
       });
@@ -338,6 +393,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
     try {
       const response = await fetch('/api/campaigns', {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, ...updatedCampaign })
       });
@@ -369,7 +425,6 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
         errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
       }
 
-      // Spezielle Validierung für utm_content bei Facebook/TikTok Ads
       if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'TikTok Ads')) {
         const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
         if (!allowedDatalistValues.includes(value)) {
@@ -396,7 +451,10 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
       <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
         <div className="container flex justify-between items-center">
           <h1>Kampagnen-Bibliothek</h1>
-          <Link to="/" className="icon"><X size={24} /></Link>
+          <div className="flex items-center gap-4">
+            <span className="text-sm">Eingeloggt als: {user.name}</span>
+            <Link to="/" className="icon"><X size={24} /></Link>
+          </div>
         </div>
       </header>
       <div className="container content-container">
@@ -553,7 +611,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns }) => {
   );
 };
 
-const Licenses = () => {
+const Licenses = ({ user }) => {
   const [licenses, setLicenses] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -568,11 +626,10 @@ const Licenses = () => {
   const fetchLicenses = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/licenses?search=${encodeURIComponent(searchTerm)}`);
+      const response = await fetch(`/api/licenses?search=${encodeURIComponent(searchTerm)}`, { credentials: 'include' });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       
-      // Sicherstellen, dass data ein Objekt ist
       if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
         setLicenses(data);
       } else {
@@ -590,7 +647,7 @@ const Licenses = () => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchLicenses();
-    }, 300); // Debounce für bessere Performance
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [fetchLicenses]);
@@ -628,6 +685,7 @@ const Licenses = () => {
       setIsLoading(true);
       const response = await fetch('/api/licenses', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: newLicense.category.trim(),
@@ -642,7 +700,7 @@ const Licenses = () => {
         throw new Error(errorData.error || 'Unbekannter Fehler');
       }
 
-      await fetchLicenses(); // Daten neu laden
+      await fetchLicenses();
       setShowAddModal(false);
       resetForm();
       showSuccess();
@@ -670,6 +728,7 @@ const Licenses = () => {
       setIsLoading(true);
       const response = await fetch('/api/licenses', {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editLicense.id,
@@ -685,7 +744,7 @@ const Licenses = () => {
         throw new Error(errorData.error || 'Unbekannter Fehler');
       }
 
-      await fetchLicenses(); // Daten komplett neu laden
+      await fetchLicenses();
       setShowEditModal(false);
       setEditLicense(null);
       setValidationErrors({});
@@ -703,6 +762,7 @@ const Licenses = () => {
       setIsLoading(true);
       const response = await fetch('/api/licenses', {
         method: 'DELETE',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
@@ -712,7 +772,7 @@ const Licenses = () => {
         throw new Error(errorData.error || 'Unbekannter Fehler');
       }
 
-      await fetchLicenses(); // Daten neu laden
+      await fetchLicenses();
       setShowDeleteConfirm(null);
     } catch (error) {
       console.error('Fehler beim Löschen:', error.message);
@@ -722,15 +782,10 @@ const Licenses = () => {
   };
 
   const openEditModal = (license) => {
-    // Debug-Log um zu sehen, welche Daten ankommen
     console.log('Opening edit modal for license:', license);
-    
-    // Sicherstellen, dass alle Eigenschaften kopiert werden
-    // Kategorie aus dem Kategorien-Kontext extrahieren, falls nicht direkt verfügbar
     const categoryFromContext = Object.keys(licenses).find(cat => 
       licenses[cat] && licenses[cat].some(l => l.id === license.id)
     );
-    
     const licenseData = {
       id: license.id,
       category: license.category || categoryFromContext || '',
@@ -738,7 +793,6 @@ const Licenses = () => {
       name: license.name || '',
       utm_writing: license.utm_writing || ''
     };
-    
     console.log('Setting edit license data:', licenseData);
     setEditLicense(licenseData);
     setShowEditModal(true);
@@ -772,10 +826,12 @@ const Licenses = () => {
       <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
         <div className="container flex justify-between items-center">
           <h1>Lizenzen</h1>
-          <Link to="/" className="icon"><X size={24} /></Link>
+          <div className="flex items-center gap-4">
+            <span className="text-sm">Eingeloggt als: {user.name}</span>
+            <Link to="/" className="icon"><X size={24} /></Link>
+          </div>
         </div>
       </header>
-      
       <div className="container content-container">
         <div className="card">
           <div className="mb-10">
@@ -801,7 +857,6 @@ const Licenses = () => {
                 </button>
               )}
             </div>
-            
             {uniqueCategories.length > 0 && (
               <div className="flex gap-2 mt-4 flex-wrap">
                 {uniqueCategories.map(cat => (
@@ -817,7 +872,6 @@ const Licenses = () => {
               </div>
             )}
           </div>
-
           <button
             onClick={() => setShowAddModal(true)}
             className="primary mb-4 flex items-center"
@@ -825,8 +879,6 @@ const Licenses = () => {
           >
             <Plus size={16} /> Neue Lizenz
           </button>
-
-          {/* Add Modal */}
           {showAddModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onKeyDown={handleKeyDown}>
               <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md">
@@ -846,7 +898,6 @@ const Licenses = () => {
                       <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
                     )}
                   </div>
-                  
                   <div>
                     <input
                       type="text"
@@ -857,7 +908,6 @@ const Licenses = () => {
                       disabled={isLoading}
                     />
                   </div>
-                  
                   <div>
                     <input
                       type="text"
@@ -871,7 +921,6 @@ const Licenses = () => {
                       <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
                     )}
                   </div>
-                  
                   <div>
                     <input
                       type="text"
@@ -885,11 +934,9 @@ const Licenses = () => {
                       <p className="text-red-500 text-sm mt-1">{validationErrors.utm_writing}</p>
                     )}
                   </div>
-                  
                   {validationErrors.general && (
                     <p className="text-red-500 text-sm">{validationErrors.general}</p>
                   )}
-                  
                   <div className="flex gap-2">
                     <button
                       onClick={handleAddLicense}
@@ -913,29 +960,26 @@ const Licenses = () => {
               </div>
             </div>
           )}
-
-          {/* Edit Modal */}
           {showEditModal && editLicense && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onKeyDown={handleKeyDown}>
               <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md">
                 <h2 className="text-lg font-semibold mb-4">Lizenz bearbeiten</h2>
                 <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Kategorie *</label>
-                      <input
-                        type="text"
-                        placeholder="Kategorie *"
-                        value={editLicense.category || ''}
-                        onChange={(e) => setEditLicense({ ...editLicense, category: e.target.value })}
-                        className={`w-full p-2 border rounded-lg ${validationErrors.category ? 'border-red-500' : ''}`}
-                        disabled={isLoading}
-                        autoFocus
-                      />
-                      {validationErrors.category && (
-                        <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
-                      )}
-                    </div>
-                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Kategorie *</label>
+                    <input
+                      type="text"
+                      placeholder="Kategorie *"
+                      value={editLicense.category || ''}
+                      onChange={(e) => setEditLicense({ ...editLicense, category: e.target.value })}
+                      className={`w-full p-2 border rounded-lg ${validationErrors.category ? 'border-red-500' : ''}`}
+                      disabled={isLoading}
+                      autoFocus
+                    />
+                    {validationErrors.category && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
+                    )}
+                  </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Tags (optional)</label>
                     <input
@@ -947,7 +991,6 @@ const Licenses = () => {
                       disabled={isLoading}
                     />
                   </div>
-                  
                   <div>
                     <label className="block text-sm font-medium mb-1">Name *</label>
                     <input
@@ -962,7 +1005,6 @@ const Licenses = () => {
                       <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
                     )}
                   </div>
-                  
                   <div>
                     <label className="block text-sm font-medium mb-1">UTM-Schreibweise *</label>
                     <input
@@ -977,11 +1019,9 @@ const Licenses = () => {
                       <p className="text-red-500 text-sm mt-1">{validationErrors.utm_writing}</p>
                     )}
                   </div>
-                  
                   {validationErrors.general && (
                     <p className="text-red-500 text-sm">{validationErrors.general}</p>
                   )}
-                  
                   <div className="flex gap-2">
                     <button
                       onClick={handleEditLicense}
@@ -1006,8 +1046,6 @@ const Licenses = () => {
               </div>
             </div>
           )}
-
-          {/* Success Dialog */}
           {showSuccessDialog && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md text-center">
@@ -1018,8 +1056,6 @@ const Licenses = () => {
               </div>
             </div>
           )}
-
-          {/* Delete Confirmation */}
           {showDeleteConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md text-center">
@@ -1044,8 +1080,6 @@ const Licenses = () => {
               </div>
             </div>
           )}
-
-          {/* Loading Indicator */}
           {isLoading && (
             <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-40">
               <div className="bg-[var(--card-background)] p-4 rounded-lg">
@@ -1053,8 +1087,6 @@ const Licenses = () => {
               </div>
             </div>
           )}
-
-          {/* License Tables */}
           {uniqueCategories.length > 0 ? (
             uniqueCategories.map(category => (
               <div key={category} className="mb-8">
@@ -1114,13 +1146,34 @@ const Licenses = () => {
 };
 
 const App = () => {
+  const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+
+  useEffect(() => {
+    const token = Cookies.get('userToken');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUser({ name: payload.name, role: payload.role });
+      } catch (err) {
+        console.error('Token-Decode fehlgeschlagen:', err);
+        Cookies.remove('userToken');
+      }
+    }
+  }, []);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+
+  if (!user) return <Login onLogin={handleLogin} />;
+
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<UTMBuilder campaigns={campaigns} setCampaigns={setCampaigns} />} />
-        <Route path="/library" element={<CampaignLibrary campaigns={campaigns} setCampaigns={setCampaigns} />} />
-        <Route path="/licenses" element={<Licenses />} />
+        <Route path="/" element={<UTMBuilder campaigns={campaigns} setCampaigns={setCampaigns} user={user} />} />
+        <Route path="/library" element={<CampaignLibrary campaigns={campaigns} setCampaigns={setCampaigns} user={user} />} />
+        <Route path="/licenses" element={<Licenses user={user} />} />
       </Routes>
     </Router>
   );
