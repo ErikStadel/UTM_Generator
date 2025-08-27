@@ -562,6 +562,7 @@ const Licenses = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editLicense, setEditLicense] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   useEffect(() => {
     const fetchLicenses = async () => {
@@ -603,6 +604,8 @@ const Licenses = () => {
       setShowAddModal(false);
       setNewLicense({ category: '', tags: '', name: '', utm_writing: '' });
       setValidationErrors({});
+      setShowSuccessDialog(true);
+      setTimeout(() => setShowSuccessDialog(false), 2000);
     } catch (error) {
       console.error('Fehler beim Hinzufügen:', error.message);
       setValidationErrors({ error: 'Fehler beim Hinzufügen der Lizenz' });
@@ -632,6 +635,8 @@ const Licenses = () => {
       setShowEditModal(false);
       setEditLicense(null);
       setValidationErrors({});
+      setShowSuccessDialog(true);
+      setTimeout(() => setShowSuccessDialog(false), 2000);
     } catch (error) {
       console.error('Fehler beim Bearbeiten:', error.message);
       setValidationErrors({ error: 'Fehler beim Bearbeiten der Lizenz' });
@@ -663,6 +668,13 @@ const Licenses = () => {
 
   const uniqueCategories = Object.keys(licenses).filter(cat => cat);
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (showEditModal) handleEditLicense();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--background-color)]">
       <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
@@ -688,7 +700,7 @@ const Licenses = () => {
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="danger icon ml-2"
+                  className=" danger icon ml-2"
                 >
                   <X size={16} />
                 </button>
@@ -771,7 +783,7 @@ const Licenses = () => {
             </div>
           )}
           {showEditModal && editLicense && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onKeyDown={handleKeyDown}>
               <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md">
                 <h2 className="text-lg font-semibold mb-4">Lizenz bearbeiten</h2>
                 <div className="space-y-4">

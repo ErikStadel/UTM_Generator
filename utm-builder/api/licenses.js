@@ -49,15 +49,17 @@ export default async function handler(req, res) {
 
     if (req.method === 'PUT') {
       const { id, category, tags, name, utm_writing } = req.body;
+      console.log('PUT-Daten:', { id, category, tags, name, utm_writing }); // Debug-Log
       if (!id) {
         return res.status(400).json({ error: 'ID erforderlich' });
       }
       const result = await sql`
-        UPDATE licenses
-        SET category = ${category}, tags = ${tags}, name = ${name}, utm_writing = ${utm_writing}
-        WHERE id = ${id}
-        RETURNING *;
-      `;
+    UPDATE licenses
+    SET category = ${category}, tags = ${tags}, name = ${name}, utm_writing = ${utm_writing}
+    WHERE id = ${id}
+    RETURNING *;
+  `;
+      console.log('UPDATE-Ergebnis:', result); // Debug-Log
       const rows = Array.isArray(result) ? result : result.rows || [];
       return res.status(200).json(rows[0]);
     }
