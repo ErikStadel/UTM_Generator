@@ -12,9 +12,9 @@ const Login = ({ onLogin }) => {
     try {
       const res = await fetch('/api/users/validate', {
         method: 'POST',
-        credentials: 'include', // Cookie senden
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.toLowerCase() }), // Kleinbuchstaben erzwingen
+        body: JSON.stringify({ name: name.toLowerCase() }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -40,7 +40,7 @@ const Login = ({ onLogin }) => {
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value.toLowerCase())} // Kleinbuchstaben
+          onChange={(e) => setName(e.target.value.toLowerCase())}
           onKeyDown={handleKeyDown}
           placeholder="Dein Name"
           className="mb-4 w-full"
@@ -1147,32 +1147,57 @@ const Licenses = ({ user }) => {
 
 const App = () => {
   const [user, setUser] = useState(null);
-  const [campaigns, setCampaigns] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = Cookies.get('userToken');
-    if (token) {
+    const validateToken = async () => {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ name: payload.name, role: payload.role });
+        const token = Cookies.get('userToken');
+        console.log('Token beim Laden:', token); // Debugging
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('Token-Payload:', payload); // Debugging
+          // Optional: Validieren mit Backend
+          const res = await fetch('/api/users/validate-token', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          if (res.ok) {
+            setUser({ name: payload.name, role: payload.role });
+          } else {
+            console.log('Token ungültig, lösche Cookie');
+            Cookies.remove('userToken');
+          }
+        }
       } catch (err) {
-        console.error('Token-Decode fehlgeschlagen:', err);
+        console.error('Fehler beim Validieren des Tokens:', err);
         Cookies.remove('userToken');
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    validateToken();
   }, []);
 
   const handleLogin = (userData) => {
     setUser(userData);
   };
 
-  if (!user) return <Login onLogin={handleLogin} />;
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Lädt...</div>;
+  }
+
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<UTMBuilder campaigns={campaigns} setCampaigns={setCampaigns} user={user} />} />
-        <Route path="/library" element={<CampaignLibrary campaigns={campaigns} setCampaigns={setCampaigns} user={user} />} />
+        <Route path="/" element={<UTMBuilder campaigns={[]} setCampaigns={() => {}} user={user} />} />
+        <Route path="/library" element={<CampaignLibrary campaigns={[]} setCampaigns={() => {}} user={user} />} />
         <Route path="/licenses" element={<Licenses user={user} />} />
       </Routes>
     </Router>
