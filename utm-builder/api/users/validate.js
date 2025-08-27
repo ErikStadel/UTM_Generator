@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     const token = jwt.sign(
       { id: user.id, name: user.name, role: user.role },
-      process.env.JWT_SECRET || 'secret',
+      process.env.JWT_SECRET,
       { expiresIn: '180d' }
     );
     res.setHeader(
@@ -32,6 +32,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ name: user.name, role: user.role });
   } catch (error) {
     console.error('Fehler:', error);
-    return res.status(500).json({ error: 'Serverfehler' });
+    return res.status(500).json({ error: 'Serverfehler', details: error.message });
   }
 }

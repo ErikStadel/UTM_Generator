@@ -1,28 +1,24 @@
 import { neon } from '@neondatabase/serverless';
-import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-
-function authenticate(req, res, next) {
-  const token = req.cookies.userToken;
-  if (!token) return res.status(401).json({ error: 'Nicht authentifiziert' });
-
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ error: 'Ungültiges Token' });
-  }
-}
-
-config(); // Lädt .env-Variablen für lokale Tests
-
-const sql = neon(process.env.DATABASE_URL);
+import { parse } from 'cookie'; // Neu: cookie-parser für Vercel
 
 export default async function handler(req, res) {
   try {
-    console.log('API aufgerufen:', req.method, process.env.DATABASE_URL); // Debug-Log
+    // Authentifizierung
+    const cookies = parse(req.headers.cookie || '');
+    const token = cookies.userToken;
+    if (!token) {
+      return res.status(401).json({ error: 'Nicht authentifiziert' });
+    }
+    try {
+      req.user = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    } catch {
+      return res.status(401).json({ error: 'Ungültiges Token' });
+    }
+
+    const sql = neon(process.env.DATABASE_URL);
+    console.log('API aufgerufen:', req.method, process.env.DATABASE_URL);
+
     if (req.method === 'GET') {
       const searchTerm = req.query.search || '';
       const result = await sql`
@@ -32,14 +28,14 @@ export default async function handler(req, res) {
         GROUP BY id, category, name, tags, utm_writing
         ORDER BY category, name;
       `;
-      console.log('Rohdatenbankergebnis:', result); // Debug-Log
+      console.log('Rohdatenbankergebnis:', result);
       const rows = Array.isArray(result) ? result : result.rows || [];
       const licensesByCategory = rows.reduce((acc, row) => {
         if (!acc[row.category]) acc[row.category] = [];
         acc[row.category].push({ id: row.id, name: row.name, tags: row.tags, utm_writing: row.utm_writing });
         return acc;
       }, {});
-      console.log('Verarbeitetes Ergebnis:', licensesByCategory); // Debug-Log
+      console.log('Verarbeitetes Ergebnis:', licensesByCategory);
       if (Object.keys(licensesByCategory).length === 0) {
         console.log('Keine Lizenzen gefunden.');
       }
@@ -48,7 +44,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const { category, tags, name, utm_writing } = req.body;
-      console.log('POST-Daten:', { category, tags, name, utm_writing }); // Zusätzlicher Debug-Log
+      console.log('POST-Daten:', { category, tags, name, utm_writing });
       if (!category || !name || !utm_writing) {
         return res.status(400).json({ error: 'Kategorie, Name und UTM-Schreibweise erforderlich' });
       }
@@ -57,24 +53,24 @@ export default async function handler(req, res) {
         VALUES (${category}, ${tags}, ${name}, ${utm_writing})
         RETURNING *;
       `;
-      console.log('INSERT-Ergebnis:', result); // Debug-Log für INSERT
+      console.log('INSERT-Ergebnis:', result);
       const rows = Array.isArray(result) ? result : result.rows || [];
       return res.status(201).json(rows[0]);
     }
 
     if (req.method === 'PUT') {
       const { id, category, tags, name, utm_writing } = req.body;
-      console.log('PUT-Daten:', { id, category, tags, name, utm_writing }); // Debug-Log
+      console.log('PUT-Daten:', { id, category, tags, name, utm_writing });
       if (!id) {
         return res.status(400).json({ error: 'ID erforderlich' });
       }
       const result = await sql`
-    UPDATE licenses
-    SET category = ${category}, tags = ${tags}, name = ${name}, utm_writing = ${utm_writing}
-    WHERE id = ${id}
-    RETURNING *;
-  `;
-      console.log('UPDATE-Ergebnis:', result); // Debug-Log
+        UPDATE licenses
+        SET category = ${category}, tags = ${tags}, name = ${name}, utm_writing = ${utm_writing}
+        WHERE id = ${id}
+        RETURNING *;
+      `;
+      console.log('UPDATE-Ergebnis:', result);
       const rows = Array.isArray(result) ? result : result.rows || [];
       return res.status(200).json(rows[0]);
     }
@@ -90,7 +86,7 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Methode nicht erlaubt' });
   } catch (error) {
-    console.error('Datenbankfehler:', error.message, error.stack); // Detaillierter Fehler
+    console.error('Datenbankfehler:', error.message, error.stack);
     return res.status(500).json({ error: 'Interner Serverfehler', details: error.message });
   }
 }
