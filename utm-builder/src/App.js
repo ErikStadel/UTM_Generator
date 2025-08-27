@@ -1098,4 +1098,17 @@ const Licenses = () => {
   );
 };
 
+const App = () => {
+  const [campaigns, setCampaigns] = useState([]);
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<UTMBuilder campaigns={campaigns} setCampaigns={setCampaigns} />} />
+        <Route path="/library" element={<CampaignLibrary campaigns={campaigns} setCampaigns={setCampaigns} />} />
+        <Route path="/licenses" element={<Licenses />} />
+      </Routes>
+    </Router>
+  );
+};
+
 export default App;
