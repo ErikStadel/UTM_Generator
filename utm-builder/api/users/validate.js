@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     );
     res.setHeader(
       'Set-Cookie',
-      `userToken=${token}; HttpOnly; Secure; Max-Age=${180 * 24 * 60 * 60}; Path=/; SameSite=Strict`
+      `userToken=${token}; HttpOnly; Secure; Max-Age=${180 * 24 * 60 * 60}; Path=/; SameSite=lax`
     );
 
     return res.status(200).json({ name: user.name, role: user.role });
