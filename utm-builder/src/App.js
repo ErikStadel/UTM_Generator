@@ -564,17 +564,18 @@ const Licenses = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
+  const fetchLicenses = async () => {
+    try {
+      const response = await fetch(`/api/licenses?search=${searchTerm}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setLicenses(data);
+    } catch (error) {
+      console.error('Fehler beim Laden der Lizenzen:', error.message);
+    }
+  };
+
   useEffect(() => {
-    const fetchLicenses = async () => {
-      try {
-        const response = await fetch(`/api/licenses?search=${searchTerm}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setLicenses(data);
-      } catch (error) {
-        console.error('Fehler beim Laden der Lizenzen:', error.message);
-      }
-    };
     fetchLicenses();
   }, [searchTerm]);
 
@@ -594,13 +595,7 @@ const Licenses = () => {
         body: JSON.stringify(newLicense),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      setLicenses(prev => {
-        const updated = { ...prev };
-        if (!updated[newLicense.category]) updated[newLicense.category] = [];
-        updated[newLicense.category].push(data);
-        return updated;
-      });
+      fetchLicenses(); // Fetch nach Hinzufügen
       setShowAddModal(false);
       setNewLicense({ category: '', tags: '', name: '', utm_writing: '' });
       setValidationErrors({});
@@ -626,12 +621,20 @@ const Licenses = () => {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       setLicenses(prev => {
-        const updated = { ...prev };
-        updated[editLicense.category] = updated[editLicense.category].map(l =>
-          l.id === data.id ? data : l
-        );
+        let updated = { ...prev };
+        if (editLicense.category !== data.category) {
+          // Eintrag aus alter Kategorie entfernen
+          updated[editLicense.category] = updated[editLicense.category].filter(l => l.id !== data.id);
+          if (updated[editLicense.category].length === 0) delete updated[editLicense.category];
+          // Eintrag in neue Kategorie einfügen
+          if (!updated[data.category]) updated[data.category] = [];
+          updated[data.category].push(data);
+        } else {
+          updated[data.category] = updated[data.category].map(l => l.id === data.id ? data : l);
+        }
         return updated;
       });
+      fetchLicenses(); // Fetch nach Bearbeiten
       setShowEditModal(false);
       setEditLicense(null);
       setValidationErrors({});
@@ -652,14 +655,7 @@ const Licenses = () => {
         body: JSON.stringify({ id }),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      setLicenses(prev => {
-        const updated = { ...prev };
-        for (let category in updated) {
-          updated[category] = updated[category].filter(l => l.id !== id);
-          if (updated[category].length === 0) delete updated[category];
-        }
-        return updated;
-      });
+      fetchLicenses(); // Fetch nach Löschen
       setShowDeleteConfirm(null);
     } catch (error) {
       console.error('Fehler beim Löschen:', error.message);
@@ -835,6 +831,13 @@ const Licenses = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+          {showSuccessDialog && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md text-center">
+                <p>Eintrag bearbeitet</p>
               </div>
             </div>
           )}
