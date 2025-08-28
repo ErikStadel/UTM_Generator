@@ -52,6 +52,337 @@ const Login = ({ onLogin }) => {
   );
 };
 
+const Admin = ({ user }) => {
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState('');
+  const [newUser, setNewUser] = useState({ name: '', role: 'standard' });
+  const [editingUser, setEditingUser] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/admin/users', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'x-admin-password': adminPassword },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Fehler beim Laden der Nutzer');
+      }
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAdminLogin = async () => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'x-admin-password': adminPassword },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Ungültiges Admin-Passwort');
+      }
+      setIsAuthenticated(true);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.role) {
+      setError('Name und Rolle erforderlich');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': adminPassword,
+        },
+        body: JSON.stringify(newUser),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Fehler beim Hinzufügen');
+      }
+      const data = await res.json();
+      setUsers([...users, data]);
+      setNewUser({ name: '', role: 'standard' });
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser.id || !editingUser.name || !editingUser.role) {
+      setError('ID, Name und Rolle erforderlich');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': adminPassword,
+        },
+        body: JSON.stringify(editingUser),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Fehler beim Aktualisieren');
+      }
+      const data = await res.json();
+      setUsers(users.map(u => (u.id === data.id ? data : u)));
+      setEditingUser(null);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': adminPassword,
+        },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Fehler beim Löschen');
+      }
+      setUsers(users.filter(u => u.id !== id));
+      setShowDeleteConfirm(null);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!isAuthenticated) {
+        handleAdminLogin();
+      } else if (editingUser) {
+        handleUpdateUser();
+      } else {
+        handleAddUser();
+      }
+    } else if (e.key === 'Escape') {
+      setEditingUser(null);
+      setError('');
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background-color)]">
+        <div className="card p-8 w-full max-w-md">
+          <h1 className="text-2xl mb-4 text-center">Admin-Login</h1>
+          <input
+            type="password"
+            value={adminPassword}
+            onChange={(e) => setAdminPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Admin-Passwort"
+            className="mb-4 w-full"
+            autoFocus
+          />
+          {error && <p className="error-message mb-2 text-center">{error}</p>}
+          <button onClick={handleAdminLogin} className="primary w-full" disabled={isLoading}>
+            {isLoading ? 'Lädt...' : 'Anmelden'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[var(--background-color)]">
+      <header className="bg-[var(--card-background)] border-b border-[var(--border-color)] p-4">
+        <div className="container flex justify-between items-center">
+          <h1>Admin: Nutzerverwaltung</h1>
+          <Link to="/" className="icon">
+            <X size={24} />
+          </Link>
+        </div>
+      </header>
+      <div className="container content-container">
+        <div className="card">
+          <h2 className="text-xl mb-4">Neuen Nutzer hinzufügen</h2>
+          <div className="space-y-4 mb-6">
+            <input
+              type="text"
+              value={newUser.name}
+              onChange={(e) => setNewUser({ ...newUser, name: e.target.value.toLowerCase() })}
+              placeholder="Name"
+              className="w-full p-2 border rounded-lg"
+              onKeyDown={handleKeyDown}
+            />
+            <select
+              value={newUser.role}
+              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+              className="w-full p-2 border rounded-lg"
+            >
+              <option value="standard">Standard</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button onClick={handleAddUser} className="primary" disabled={isLoading}>
+              <Plus size={16} /> Hinzufügen
+            </button>
+            {error && <p className="error-message">{error}</p>}
+          </div>
+          <h2 className="text-xl mb-4">Nutzerliste</h2>
+          {isLoading ? (
+            <p>Lädt...</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse table-fixed min-w-full">
+                <thead>
+                  <tr className="bg-[var(--card-background)]">
+                    <th className="border p-2 text-left w-1/3">Name</th>
+                    <th className="border p-2 text-left w-1/3">Rolle</th>
+                    <th className="border p-2 text-center w-1/3">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u, index) => (
+                    <tr key={u.id} className={`border-t ${index % 2 === 0 ? 'bg-gray-600' : ''}`}>
+                      <td className="p-2 break-words">
+                        {editingUser?.id === u.id ? (
+                          <input
+                            type="text"
+                            value={editingUser.name}
+                            onChange={(e) =>
+                              setEditingUser({ ...editingUser, name: e.target.value.toLowerCase() })
+                            }
+                            className="w-full p-1 border rounded-lg"
+                            onKeyDown={handleKeyDown}
+                          />
+                        ) : (
+                          u.name
+                        )}
+                      </td>
+                      <td className="p-2 break-words">
+                        {editingUser?.id === u.id ? (
+                          <select
+                            value={editingUser.role}
+                            onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                            className="w-full p-1 border rounded-lg"
+                          >
+                            <option value="standard">Standard</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        ) : (
+                          u.role
+                        )}
+                      </td>
+                      <td className="p-2">
+                        <div className="flex gap-2 justify-center">
+                          {editingUser?.id === u.id ? (
+                            <>
+                              <button
+                                onClick={handleUpdateUser}
+                                className="icon text-[var(--success-color)]"
+                                disabled={isLoading}
+                              >
+                                <Check size={16} />
+                              </button>
+                              <button
+                                onClick={() => setEditingUser(null)}
+                                className="icon text-blue-300"
+                                disabled={isLoading}
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setEditingUser({ id: u.id, name: u.name, role: u.role })}
+                                className="icon text-blue-300"
+                                disabled={isLoading}
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button
+                                onClick={() => setShowDeleteConfirm(u.id)}
+                                className="danger icon"
+                                disabled={isLoading}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md text-center">
+                <h2 className="text-lg font-semibold mb-4">Nutzer löschen</h2>
+                <p>Sind Sie sicher, dass Sie diesen Nutzer löschen möchten?</p>
+                <div className="flex gap-2 justify-center mt-4">
+                  <button
+                    onClick={() => handleDeleteUser(showDeleteConfirm)}
+                    className="danger px-4 py-2 rounded-lg"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Wird gelöscht...' : 'Ja, löschen'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(null)}
+                    className="secondary px-4 py-2 rounded-lg"
+                    disabled={isLoading}
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   const [selectedChannel, setSelectedChannel] = useState('');
   const [utmParams, setUtmParams] = useState({
@@ -110,7 +441,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     if (value) {
       if (/[^a-z0-9_{}]/.test(value)) errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
       if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
-
       if (field === 'campaign') {
         if (isLibraryScreen) {
           const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*(_[a-z0-9][a-z0-9_]*)?$/;
@@ -119,11 +449,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
           if (/[^a-z0-9_{}]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
         }
       }
-
       if ((field === 'content' || field === 'term') && /[^a-z0-9_{}]/.test(value)) {
         errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
       }
-
       if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'TikTok Ads')) {
         const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
         if (!allowedDatalistValues.includes(value)) {
@@ -190,6 +518,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
         </button>
         <Link to="/library" onClick={() => setMenuOpen(false)} className="menu-item">Kampagnen</Link>
         <Link to="/licenses" onClick={() => setMenuOpen(false)} className="menu-item">Lizenzen</Link>
+        {user.role === 'admin' && (
+          <Link to="/admin" onClick={() => setMenuOpen(false)} className="menu-item">Admin</Link>
+        )}
       </div>
       <div className="container content-container relative z-10">
         <div className="card">
@@ -1150,12 +1481,9 @@ const Licenses = ({ user }) => {
 const App = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // NEU: Kampagnen-State
   const [campaigns, setCampaigns] = useState([]);
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
 
-  // Token serverseitig validieren
   useEffect(() => {
     const validateToken = async () => {
       try {
@@ -1179,17 +1507,14 @@ const App = () => {
     validateToken();
   }, []);
 
-  // NEU: Kampagnen laden, sobald der User da ist
   useEffect(() => {
     if (!user) return;
-
     const loadCampaigns = async () => {
       try {
         setIsLoadingCampaigns(true);
         const res = await fetch('/api/campaigns', { credentials: 'include' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        // Neon kann array oder obj.rows liefern – normalize:
         const rows = Array.isArray(data) ? data : data?.rows || [];
         setCampaigns(rows);
       } catch (e) {
@@ -1198,7 +1523,6 @@ const App = () => {
         setIsLoadingCampaigns(false);
       }
     };
-
     loadCampaigns();
   }, [user]);
 
@@ -1215,7 +1539,6 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        {/* HIER: echte campaigns und setCampaigns weiterreichen */}
         <Route
           path="/"
           element={<UTMBuilder campaigns={campaigns} setCampaigns={setCampaigns} user={user} />}
@@ -1227,11 +1550,14 @@ const App = () => {
               campaigns={campaigns}
               setCampaigns={setCampaigns}
               user={user}
-              isLoadingCampaigns={isLoadingCampaigns} // optional
+              isLoadingCampaigns={isLoadingCampaigns}
             />
           }
         />
         <Route path="/licenses" element={<Licenses user={user} />} />
+        {user.role === 'admin' && (
+          <Route path="/admin" element={<Admin user={user} />} />
+        )}
       </Routes>
     </Router>
   );
