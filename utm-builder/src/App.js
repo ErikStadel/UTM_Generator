@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Copy, Search, Archive, Plus, Trash2, Edit3, Check, X, Menu } from 'lucide-react';
 import './App.css';
@@ -398,6 +398,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [licenseSuggestions, setLicenseSuggestions] = useState([]);
   const [showLicenseDropdown, setShowLicenseDropdown] = useState(false);
+  const [campaignSearchTerm, setCampaignSearchTerm] = useState('');
+  const [showCampaignDropdown, setShowCampaignDropdown] = useState(false);
+  const [filteredCampaigns, setFilteredCampaigns] = useState([]);
 
   const channels = {
     'Google Ads': { source: 'google', medium: 'cpc', showTerm: true },
@@ -425,6 +428,11 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     };
     fetchCampaigns();
   }, [setCampaigns]);
+
+  const sortedCampaigns = useMemo(() => 
+    campaigns.filter(c => !c.archived).sort((a, b) => b.id - a.id), 
+    [campaigns]
+  );
 
   // Debounce-Funktion
   const debounce = (func, wait) => {
@@ -485,6 +493,23 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     }));
     setShowLicenseDropdown(false);
     setValidationErrors({});
+  };
+
+  const handleCampaignSearchChange = (e) => {
+    const value = e.target.value;
+    setCampaignSearchTerm(value);
+    if (value.length >= 2) {
+      const filtered = sortedCampaigns.filter(c => c.name.toLowerCase().includes(value.toLowerCase()));
+      setFilteredCampaigns(filtered);
+    } else {
+      setFilteredCampaigns(sortedCampaigns);
+    }
+  };
+
+  const handleCampaignSelect = (name) => {
+    handleParamChange('campaign', name);
+    setShowCampaignDropdown(false);
+    setCampaignSearchTerm('');
   };
 
   const validateNomenclature = (value, field, isLibraryScreen = false, selectedChannel = '') => {
@@ -623,16 +648,35 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                         className={`flex-1 ${validationErrors.campaign ? 'error' : ''}`}
                         placeholder="2025_08_urlaubsrabatt_01 oder %fuß für Lizenzen"
                       />
-                      <select
-                        value=""
-                        onChange={(e) => handleParamChange('campaign', e.target.value)}
-                        className="flex-1"
-                      >
-                        <option value="">Aus Bibliothek wählen</option>
-                        {campaigns.filter(c => !c.archived).map(campaign => (
-                          <option key={campaign.id} value={campaign.name}>{campaign.name}</option>
-                        ))}
-                      </select>
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={campaignSearchTerm}
+                          onChange={handleCampaignSearchChange}
+                          onFocus={() => {
+                            setShowCampaignDropdown(true);
+                            setFilteredCampaigns(sortedCampaigns);
+                          }}
+                          className="w-full"
+                          placeholder="Aus Bibliothek wählen"
+                        />
+                        {showCampaignDropdown && (
+                          <div className="absolute z-10 w-full mt-1 bg-[var(--card-background)] border border-[var(--border-color)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {filteredCampaigns.map((campaign) => (
+                              <div
+                                key={campaign.id}
+                                className="px-4 py-2 hover:bg-[var(--secondary-color)] cursor-pointer text-sm"
+                                onClick={() => handleCampaignSelect(campaign.name)}
+                              >
+                                {campaign.name}
+                              </div>
+                            ))}
+                            {filteredCampaigns.length === 0 && (
+                              <div className="px-4 py-2 text-sm text-gray-500">Keine Ergebnisse</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {validationErrors.campaign && <p className="error-message">{validationErrors.campaign}</p>}
                     {showLicenseDropdown && (
