@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import Cookies from 'js-cookie';
 import { Copy, Search, Archive, Plus, Trash2, Edit3, Check, X, Menu } from 'lucide-react';
 import './App.css';
 
@@ -439,12 +438,15 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
     return errors;
   };
 
-  const filteredCampaigns = campaigns.filter(campaign => {
-    const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         campaign.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesArchiveFilter = showArchived ? campaign.archived : !campaign.archived;
-    return matchesSearch && matchesArchiveFilter;
-  });
+  const filteredCampaigns = campaigns.filter((campaign) => {
+  const name = (campaign?.name ?? '').toLowerCase();
+  const category = (campaign?.category ?? '').toLowerCase();
+  const matchesSearch =
+    name.includes(searchTerm.toLowerCase()) ||
+    category.includes(searchTerm.toLowerCase());
+  const matchesArchiveFilter = showArchived ? campaign.archived : !campaign.archived;
+  return matchesSearch && matchesArchiveFilter;
+});
 
   return (
     <div className="min-h-screen bg-[var(--background-color)]">
@@ -1149,33 +1151,58 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-  const validateToken = async () => {
-    try {
-      // Kein Token mehr im Client lesen! Das übernimmt das Backend.
-      const res = await fetch('/api/users/validate-token', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUser({ name: data.name, role: data.role });
-      } else {
-        setUser(null);
-      }
-    } catch (err) {
-      console.error('Fehler beim Validieren des Tokens:', err);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  validateToken();
-}, []);
+  // NEU: Kampagnen-State
+  const [campaigns, setCampaigns] = useState([]);
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-  };
+  // Token serverseitig validieren
+  useEffect(() => {
+    const validateToken = async () => {
+      try {
+        const res = await fetch('/api/users/validate-token', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUser({ name: data.name, role: data.role });
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Fehler beim Validieren des Tokens:', err);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    validateToken();
+  }, []);
+
+  // NEU: Kampagnen laden, sobald der User da ist
+  useEffect(() => {
+    if (!user) return;
+
+    const loadCampaigns = async () => {
+      try {
+        setIsLoadingCampaigns(true);
+        const res = await fetch('/api/campaigns', { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        // Neon kann array oder obj.rows liefern – normalize:
+        const rows = Array.isArray(data) ? data : data?.rows || [];
+        setCampaigns(rows);
+      } catch (e) {
+        console.error('Kampagnen laden fehlgeschlagen:', e.message);
+      } finally {
+        setIsLoadingCampaigns(false);
+      }
+    };
+
+    loadCampaigns();
+  }, [user]);
+
+  const handleLogin = (userData) => setUser(userData);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Lädt...</div>;
@@ -1188,8 +1215,22 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<UTMBuilder campaigns={[]} setCampaigns={() => {}} user={user} />} />
-        <Route path="/library" element={<CampaignLibrary campaigns={[]} setCampaigns={() => {}} user={user} />} />
+        {/* HIER: echte campaigns und setCampaigns weiterreichen */}
+        <Route
+          path="/"
+          element={<UTMBuilder campaigns={campaigns} setCampaigns={setCampaigns} user={user} />}
+        />
+        <Route
+          path="/library"
+          element={
+            <CampaignLibrary
+              campaigns={campaigns}
+              setCampaigns={setCampaigns}
+              user={user}
+              isLoadingCampaigns={isLoadingCampaigns} // optional
+            />
+          }
+        />
         <Route path="/licenses" element={<Licenses user={user} />} />
       </Routes>
     </Router>
