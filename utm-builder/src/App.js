@@ -396,6 +396,8 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [licenseSuggestions, setLicenseSuggestions] = useState([]);
+  const [showLicenseDropdown, setShowLicenseDropdown] = useState(false);
 
   const channels = {
     'Google Ads': { source: 'google', medium: 'cpc', showTerm: true },
@@ -424,6 +426,21 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     fetchCampaigns();
   }, [setCampaigns]);
 
+  const fetchLicenses = async () => {
+    try {
+      const response = await fetch('/api/licenses?search=', { credentials: 'include' });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      const licenses = Object.values(data).flat().map(license => license.utm_writing);
+      setLicenseSuggestions(licenses);
+      setShowLicenseDropdown(licenses.length > 0);
+    } catch (error) {
+      console.error('Fehler beim Laden der Lizenzen:', error.message);
+      setLicenseSuggestions([]);
+      setShowLicenseDropdown(false);
+    }
+  };
+
   const handleChannelChange = (channel) => {
     setSelectedChannel(channel);
     const channelData = channels[channel];
@@ -436,23 +453,43 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     setValidationErrors({});
   };
 
+  const handleParamChange = (field, value) => {
+    setUtmParams(prev => ({ ...prev, [field]: value }));
+    if (field === 'campaign' && value.includes('%')) {
+      fetchLicenses();
+    } else {
+      setShowLicenseDropdown(false);
+      const errors = validateNomenclature(value, field, false, selectedChannel);
+      setValidationErrors(prev => ({ ...prev, ...errors, [field]: errors[field] || null }));
+    }
+  };
+
+  const handleLicenseSelect = (utmWriting) => {
+    setUtmParams(prev => ({
+      ...prev,
+      campaign: prev.campaign.replace('%', utmWriting)
+    }));
+    setShowLicenseDropdown(false);
+    setValidationErrors({});
+  };
+
   const validateNomenclature = (value, field, isLibraryScreen = false, selectedChannel = '') => {
     const errors = {};
     if (value) {
-      if (/[^a-z0-9_{}]/.test(value)) errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+      if (/[^a-z0-9_{}%]/.test(value)) errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche, {} und % erlaubt';
       if (/\s/.test(value)) errors[field] = 'Keine Leerzeichen';
       if (field === 'campaign') {
         if (isLibraryScreen) {
           const pattern = /^20\d{2}_([0][1-9]|[1][0-2])_[a-z][a-z0-9_]*(_[a-z0-9][a-z0-9_]*)?$/;
           if (!pattern.test(value)) errors.campaign = 'Format: YYYY_MM_aktion[_variante]';
         } else {
-          if (/[^a-z0-9_{}]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
+          if (/[^a-z0-9_{}%]/.test(value)) errors.campaign = 'Nur Buchstaben, Zahlen, Unterstriche, {} und % erlaubt';
         }
       }
       if ((field === 'content' || field === 'term') && /[^a-z0-9_{}]/.test(value)) {
         errors[field] = 'Nur Buchstaben, Zahlen, Unterstriche und {} erlaubt';
       }
-      if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'TikTok Ads')) {
+      if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'Tiktok Ads')) {
         const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
         if (!allowedDatalistValues.includes(value)) {
           if (/[A-Z]/.test(value)) {
@@ -464,12 +501,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
       }
     }
     return errors;
-  };
-
-  const handleParamChange = (field, value) => {
-    setUtmParams(prev => ({ ...prev, [field]: value }));
-    const errors = validateNomenclature(value, field, false, selectedChannel);
-    setValidationErrors(prev => ({ ...prev, ...errors, [field]: errors[field] || null }));
   };
 
   const generateUrl = () => {
@@ -563,15 +594,15 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                       <input type="text" value={utmParams.medium} readOnly className="w-full" />
                     </div>
                   </div>
-                  <div>
-                    <label>UTM Campaign * <span className="text-xs text-gray-500 ml-2">Nur Kleinbuchstaben, Zahlen, Unterstriche und {}</span></label>
+                  <div className="relative">
+                    <label>UTM Campaign * <span className="text-xs text-gray-500 ml-2">Nur Kleinbuchstaben, Zahlen, Unterstriche, {} und %</span></label>
                     <div className="flex gap-4">
                       <input
                         type="text"
                         value={utmParams.campaign}
                         onChange={(e) => handleParamChange('campaign', e.target.value)}
                         className={`flex-1 ${validationErrors.campaign ? 'error' : ''}`}
-                        placeholder="2025_08_urlaubsrabatt_01"
+                        placeholder="2025_08_urlaubsrabatt_01 oder % für Lizenzen"
                       />
                       <select
                         value=""
@@ -585,6 +616,19 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                       </select>
                     </div>
                     {validationErrors.campaign && <p className="error-message">{validationErrors.campaign}</p>}
+                    {showLicenseDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-[var(--card-background)] border border-[var(--border-color)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {licenseSuggestions.map((utmWriting, index) => (
+                          <div
+                            key={index}
+                            className="px-4 py-2 hover:bg-[var(--secondary-color)] cursor-pointer text-sm"
+                            onClick={() => handleLicenseSelect(utmWriting)}
+                          >
+                            {utmWriting}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label>UTM Content (optional)</label>
