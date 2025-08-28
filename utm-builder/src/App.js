@@ -1049,6 +1049,7 @@ const Licenses = ({ user }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(null); // Neuer State für Copy-Meldung
 
   const fetchLicenses = useCallback(async () => {
     try {
@@ -1205,6 +1206,16 @@ const Licenses = ({ user }) => {
       console.error('Fehler beim Löschen:', error.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCopyLicense = async (utmWriting, id) => {
+    try {
+      await navigator.clipboard.writeText(utmWriting);
+      setCopySuccess(id);
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (error) {
+      console.error('Fehler beim Kopieren:', error.message);
     }
   };
 
@@ -1483,6 +1494,16 @@ const Licenses = ({ user }) => {
               </div>
             </div>
           )}
+          {copySuccess && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md text-center">
+                <div className="text-green-500 mb-2">
+                  <Check size={32} className="mx-auto" />
+                </div>
+                <p>✓ Kopiert</p>
+              </div>
+            </div>
+          )}
           {showDeleteConfirm && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-[var(--card-background)] p-6 rounded-lg shadow-lg w-full max-w-md text-center">
@@ -1543,6 +1564,14 @@ const Licenses = ({ user }) => {
                                 disabled={isLoading}
                               >
                                 <Edit3 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleCopyLicense(license.utm_writing, license.id)}
+                                className={`icon p-1 ${copySuccess === license.id ? 'text-green-500' : 'text-blue-300'}`}
+                                title="Kopieren"
+                                disabled={isLoading}
+                              >
+                                <Copy size={16} />
                               </button>
                               <button
                                 onClick={() => setShowDeleteConfirm(license.id)}
