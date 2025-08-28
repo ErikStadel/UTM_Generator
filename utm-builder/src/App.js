@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Copy, Search, Archive, Plus, Trash2, Edit3, Check, X, Menu } from 'lucide-react';
 import './App.css';
@@ -402,6 +402,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   const [showCampaignDropdown, setShowCampaignDropdown] = useState(false);
   const [filteredCampaigns, setFilteredCampaigns] = useState([]);
 
+  const campaignDropdownRef = useRef(null);
+  const licenseDropdownRef = useRef(null);
+
   const channels = {
     'Google Ads': { source: 'google', medium: 'cpc', showTerm: true },
     'Bing Ads': { source: 'bing', medium: 'cpc', showTerm: true },
@@ -429,12 +432,28 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     fetchCampaigns();
   }, [setCampaigns]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (campaignDropdownRef.current && !campaignDropdownRef.current.contains(event.target)) {
+        setShowCampaignDropdown(false);
+        setCampaignSearchTerm('');
+      }
+      if (licenseDropdownRef.current && !licenseDropdownRef.current.contains(event.target)) {
+        setShowLicenseDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const sortedCampaigns = useMemo(() => 
     campaigns.filter(c => !c.archived).sort((a, b) => b.id - a.id), 
     [campaigns]
   );
 
-  // Debounce-Funktion
   const debounce = (func, wait) => {
     let timeout;
     return (...args) => {
@@ -458,7 +477,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     }
   };
 
-  // Debounced-Version von fetchLicenses
   const debouncedFetchLicenses = useCallback(debounce(fetchLicenses, 300), []);
 
   const handleChannelChange = (channel) => {
@@ -645,10 +663,11 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                         type="text"
                         value={utmParams.campaign}
                         onChange={(e) => handleParamChange('campaign', e.target.value)}
+                        onFocus={() => setShowLicenseDropdown(false)}
                         className={`flex-1 ${validationErrors.campaign ? 'error' : ''}`}
-                        placeholder="2025_08_urlaubsrabatt_01 oder %fuß für Lizenzen"
+                        placeholder="2025_08_urlaubsrabatt_01 oder % für Lizenzsuche"
                       />
-                      <div className="relative flex-1">
+                      <div className="relative flex-1" ref={campaignDropdownRef}>
                         <input
                           type="text"
                           value={campaignSearchTerm}
@@ -680,7 +699,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                     </div>
                     {validationErrors.campaign && <p className="error-message">{validationErrors.campaign}</p>}
                     {showLicenseDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-[var(--card-background)] border border-[var(--border-color)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      <div className="absolute z-10 w-full mt-1 bg-[var(--card-background)] border border-[var(--border-color)] rounded-lg shadow-lg max-h-60 overflow-y-auto" ref={licenseDropdownRef}>
                         {licenseSuggestions.map((license, index) => (
                           <div
                             key={index}
@@ -691,6 +710,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                             <span className="text-right">{license.utm_writing}</span>
                           </div>
                         ))}
+                        {licenseSuggestions.length === 0 && (
+                          <div className="px-4 py-2 text-sm text-gray-500">Keine Ergebnisse</div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -701,6 +723,10 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                         type="text"
                         value={utmParams.content}
                         onChange={(e) => handleParamChange('content', e.target.value)}
+                        onFocus={() => {
+                          setShowCampaignDropdown(false);
+                          setShowLicenseDropdown(false);
+                        }}
                         className={`w-full ${validationErrors.content ? 'error' : ''} appearance-none border border-gray-30 rounded-lg p-2`}
                         placeholder="banner_header"
                         list="contentSuggestions"
@@ -710,6 +736,10 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                         type="text"
                         value={utmParams.content}
                         onChange={(e) => handleParamChange('content', e.target.value)}
+                        onFocus={() => {
+                          setShowCampaignDropdown(false);
+                          setShowLicenseDropdown(false);
+                        }}
                         className={validationErrors.content ? 'error' : ''}
                         placeholder="banner_header"
                       />
@@ -729,6 +759,10 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                         type="text"
                         value={utmParams.term}
                         onChange={(e) => handleParamChange('term', e.target.value)}
+                        onFocus={() => {
+                          setShowCampaignDropdown(false);
+                          setShowLicenseDropdown(false);
+                        }}
                         className={validationErrors.term ? 'error' : ''}
                         placeholder="keyword"
                       />
