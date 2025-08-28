@@ -657,7 +657,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
 const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [newCampaign, setNewCampaign] = useState({ name: '', category: '', archived: false });
+  const [newCampaign, setNewCampaign] = useState({ name: '', category: '', archived: false, inhaber: user.name });
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
   const categories = ['Saisonale Aktionen', 'Produktlaunches', 'Gewinnspiele', 'Rabattaktionen', 'Brand Awareness', 'Sonstiges'];
@@ -671,12 +671,12 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: newCampaign.name, category: newCampaign.category })
+            body: JSON.stringify({ name: newCampaign.name, category: newCampaign.category, inhaber: newCampaign.inhaber })
           });
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const newCamp = await response.json();
           setCampaigns(prev => [...prev, newCamp]);
-          setNewCampaign({ name: '', category: '', archived: false });
+          setNewCampaign({ name: '', category: '', archived: false, inhaber: user.name });
           setValidationErrors({});
         } catch (error) {
           console.error('Fehler beim Hinzufügen der Kampagne:', error.message);
@@ -709,7 +709,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...campaign, archived: !campaign.archived })
+        body: JSON.stringify({ id, name: campaign.name, category: campaign.category, archived: !campaign.archived, inhaber: campaign.inhaber })
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const updated = await response.json();
@@ -720,17 +720,23 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
   };
 
   const updateCampaign = async (id, updatedCampaign) => {
+    const errors = validateNomenclature(updatedCampaign.name, 'campaign', true);
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
     try {
       const response = await fetch('/api/campaigns', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...updatedCampaign })
+        body: JSON.stringify({ id, name: updatedCampaign.name, category: updatedCampaign.category, archived: updatedCampaign.archived, inhaber: updatedCampaign.inhaber })
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const updated = await response.json();
       setCampaigns(prev => prev.map(c => c.id === id ? updated : c));
       setEditingCampaign(null);
+      setValidationErrors({});
     } catch (error) {
       console.error('Fehler beim Aktualisieren der Kampagne:', error.message);
     }
@@ -770,14 +776,16 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
   };
 
   const filteredCampaigns = campaigns.filter((campaign) => {
-  const name = (campaign?.name ?? '').toLowerCase();
-  const category = (campaign?.category ?? '').toLowerCase();
-  const matchesSearch =
-    name.includes(searchTerm.toLowerCase()) ||
-    category.includes(searchTerm.toLowerCase());
-  const matchesArchiveFilter = showArchived ? campaign.archived : !campaign.archived;
-  return matchesSearch && matchesArchiveFilter;
-});
+    const name = (campaign?.name ?? '').toLowerCase();
+    const category = (campaign?.category ?? '').toLowerCase();
+    const inhaber = (campaign?.inhaber ?? '').toLowerCase();
+    const matchesSearch =
+      name.includes(searchTerm.toLowerCase()) ||
+      category.includes(searchTerm.toLowerCase()) ||
+      inhaber.includes(searchTerm.toLowerCase());
+    const matchesArchiveFilter = showArchived ? campaign.archived : !campaign.archived;
+    return matchesSearch && matchesArchiveFilter;
+  });
 
   return (
     <div className="min-h-screen bg-[var(--background-color)]">
@@ -823,6 +831,16 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                  {user.role === 'admin' && (
+                    <select
+                      value={newCampaign.inhaber}
+                      onChange={(e) => setNewCampaign(prev => ({ ...prev, inhaber: e.target.value }))}
+                      className="flex-1"
+                    >
+                      <option value={user.name}>{user.name} (eigene)</option>
+                      <option value="alle">Alle</option>
+                    </select>
+                  )}
                   <button
                     onClick={addCampaign}
                     disabled={!newCampaign.name || !newCampaign.category || Object.keys(validationErrors).length > 0}
@@ -881,11 +899,23 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
                             <option key={cat} value={cat}>{cat}</option>
                           ))}
                         </select>
+                        {user.role === 'admin' && (
+                          <select
+                            value={campaign.inhaber || user.name}
+                            onChange={(e) => setCampaigns(prev => prev.map(c => 
+                              c.id === campaign.id ? { ...c, inhaber: e.target.value } : c
+                            ))}
+                            className="w-full px-2 py-1 text-sm border border-[var(--border-color)] rounded-lg"
+                          >
+                            <option value={user.name}>{user.name} (eigene)</option>
+                            <option value="alle">Alle</option>
+                          </select>
+                        )}
                       </div>
                     ) : (
                       <div>
                         <div className="font-medium text-sm">{campaign.name}</div>
-                        <div className="text-xs text-gray-500">{campaign.category}</div>
+                        <div className="text-xs text-gray-500">{campaign.category} | Inhaber: {campaign.inhaber || user.name}</div>
                       </div>
                     )}
                   </div>

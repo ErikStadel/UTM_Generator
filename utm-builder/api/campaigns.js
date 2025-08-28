@@ -20,7 +20,12 @@ export default async function handler(req, res) {
     console.log('API aufgerufen:', req.method, process.env.DATABASE_URL);
 
     if (req.method === 'GET') {
-      const result = await sql`SELECT * FROM campaigns;`;
+      let result;
+      if (req.user.role === 'admin') {
+        result = await sql`SELECT * FROM campaigns;`;
+      } else {
+        result = await sql`SELECT * FROM campaigns WHERE inhaber = ${req.user.name} OR inhaber = 'alle';`;
+      }
       console.log('Rohdatenbankergebnis:', result);
       const rows = Array.isArray(result) ? result : result.rows || [];
       console.log('Verarbeitetes Ergebnis:', rows);
@@ -31,13 +36,14 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { name, category } = req.body;
+      const { name, category, inhaber: providedInhaber } = req.body;
       if (!name || !category) {
         return res.status(400).json({ error: 'Name und Kategorie erforderlich' });
       }
+      const finalInhaber = (req.user.role === 'admin' && providedInhaber === 'alle') ? 'alle' : req.user.name;
       const result = await sql`
-        INSERT INTO campaigns (name, category, archived)
-        VALUES (${name}, ${category}, FALSE)
+        INSERT INTO campaigns (name, category, archived, inhaber)
+        VALUES (${name}, ${category}, FALSE, ${finalInhaber})
         RETURNING *;
       `;
       const rows = Array.isArray(result) ? result : result.rows || [];
@@ -45,13 +51,17 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      const { id, name, category, archived } = req.body;
+      const { id, name, category, archived, inhaber: providedInhaber } = req.body;
       if (!id) {
         return res.status(400).json({ error: 'ID erforderlich' });
       }
+      let finalInhaber = providedInhaber;
+      if (req.user.role !== 'admin' && providedInhaber !== undefined && providedInhaber !== req.user.name) {
+        finalInhaber = req.user.name; // Non-Admins dürfen Inhaber nicht ändern
+      }
       const result = await sql`
         UPDATE campaigns
-        SET name = ${name}, category = ${category}, archived = ${archived}
+        SET name = ${name}, category = ${category}, archived = ${archived}, inhaber = ${finalInhaber}
         WHERE id = ${id}
         RETURNING *;
       `;
