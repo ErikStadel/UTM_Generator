@@ -426,12 +426,21 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     fetchCampaigns();
   }, [setCampaigns]);
 
-  const fetchLicenses = async () => {
+  // Debounce-Funktion
+  const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
+  const fetchLicenses = async (searchTerm) => {
     try {
-      const response = await fetch('/api/licenses?search=', { credentials: 'include' });
+      const response = await fetch(`/api/licenses?search=${encodeURIComponent(searchTerm)}`, { credentials: 'include' });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      const licenses = Object.values(data).flat().map(license => license.utm_writing);
+      const licenses = Object.values(data).flat();
       setLicenseSuggestions(licenses);
       setShowLicenseDropdown(licenses.length > 0);
     } catch (error) {
@@ -440,6 +449,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
       setShowLicenseDropdown(false);
     }
   };
+
+  // Debounced-Version von fetchLicenses
+  const debouncedFetchLicenses = useCallback(debounce(fetchLicenses, 300), []);
 
   const handleChannelChange = (channel) => {
     setSelectedChannel(channel);
@@ -456,7 +468,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   const handleParamChange = (field, value) => {
     setUtmParams(prev => ({ ...prev, [field]: value }));
     if (field === 'campaign' && value.includes('%')) {
-      fetchLicenses();
+      const parts = value.split('%');
+      const searchTerm = parts.length > 1 ? parts[1] : '';
+      debouncedFetchLicenses(searchTerm);
     } else {
       setShowLicenseDropdown(false);
       const errors = validateNomenclature(value, field, false, selectedChannel);
@@ -464,10 +478,10 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     }
   };
 
-  const handleLicenseSelect = (utmWriting) => {
+  const handleLicenseSelect = (utmWriting, searchTerm) => {
     setUtmParams(prev => ({
       ...prev,
-      campaign: prev.campaign.replace('%', utmWriting)
+      campaign: prev.campaign.replace(`%${searchTerm}`, utmWriting)
     }));
     setShowLicenseDropdown(false);
     setValidationErrors({});
@@ -529,6 +543,11 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
 
   const hasValidationErrors = Object.values(validationErrors).some(error => error !== null && error !== undefined);
   const canGenerateUrl = selectedChannel && utmParams.source && utmParams.medium && utmParams.campaign && !hasValidationErrors;
+
+  const getSearchTerm = () => {
+    const parts = utmParams.campaign.split('%');
+    return parts.length > 1 ? parts[1] : '';
+  };
 
   return (
     <div className="min-h-screen bg-[var(--background-color)] relative">
@@ -602,7 +621,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                         value={utmParams.campaign}
                         onChange={(e) => handleParamChange('campaign', e.target.value)}
                         className={`flex-1 ${validationErrors.campaign ? 'error' : ''}`}
-                        placeholder="2025_08_urlaubsrabatt_01 oder % für Lizenzen"
+                        placeholder="2025_08_urlaubsrabatt_01 oder %fuß für Lizenzen"
                       />
                       <select
                         value=""
@@ -618,13 +637,14 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                     {validationErrors.campaign && <p className="error-message">{validationErrors.campaign}</p>}
                     {showLicenseDropdown && (
                       <div className="absolute z-10 w-full mt-1 bg-[var(--card-background)] border border-[var(--border-color)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {licenseSuggestions.map((utmWriting, index) => (
+                        {licenseSuggestions.map((license, index) => (
                           <div
                             key={index}
-                            className="px-4 py-2 hover:bg-[var(--secondary-color)] cursor-pointer text-sm"
-                            onClick={() => handleLicenseSelect(utmWriting)}
+                            className="grid grid-cols-2 px-4 py-2 hover:bg-[var(--secondary-color)] cursor-pointer text-sm"
+                            onClick={() => handleLicenseSelect(license.utm_writing, getSearchTerm())}
                           >
-                            {utmWriting}
+                            <span>{license.name}</span>
+                            <span className="text-right">{license.utm_writing}</span>
                           </div>
                         ))}
                       </div>
