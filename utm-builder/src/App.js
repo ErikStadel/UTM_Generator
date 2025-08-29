@@ -917,15 +917,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     'Push': { source: 'website', medium: 'push', showTerm: false }
   };
 
-  // Optimierte Lizenzsuche mit Cache und Abort Controller
   const fetchLicenses = async (searchTerm) => {
-    if (!searchTerm || searchTerm.length < 1) {
-      setLicenseSuggestions([]);
-      setShowLicenseDropdown(false);
-      return;
-    }
-
-    const cacheKey = searchTerm.toLowerCase();
+    // Wenn searchTerm leer ist, alle Lizenzen laden
+    const cacheKey = searchTerm ? searchTerm.toLowerCase() : 'all';
     if (licenseSearchCache.has(cacheKey)) {
       const cachedResults = licenseSearchCache.get(cacheKey);
       setLicenseSuggestions(cachedResults);
@@ -941,18 +935,18 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     setLicenseSearchAbortController(controller);
 
     try {
-      const response = await fetch(
-        `/api/licenses?search=${encodeURIComponent(searchTerm)}`,
-        {
-          credentials: 'include',
-          signal: controller.signal
-        }
-      );
+      const url = searchTerm
+        ? `/api/licenses?search=${encodeURIComponent(searchTerm)}`
+        : `/api/licenses`;
+      const response = await fetch(url, {
+        credentials: 'include',
+        signal: controller.signal
+      });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      const licenses = Object.values(data).flat();
+      const licenses = Array.isArray(data) ? data : Object.values(data).flat();
 
       // Cache speichern (begrenzt auf 50 Einträge)
       if (licenseSearchCache.size >= 50) {
@@ -963,7 +957,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
 
       setLicenseSuggestions(licenses);
       setShowLicenseDropdown(licenses.length > 0);
-
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Fehler beim Laden der Lizenzen:', error.message);
@@ -985,7 +978,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
 
   const debouncedFetchLicenses = useCallback(debounce(fetchLicenses, 200), [licenseSearchCache]);
 
-  // Rest der UseEffects bleiben gleich...
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
@@ -1030,11 +1022,10 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     };
   }, [licenseSearchAbortController]);
 
-  const sortedCampaigns = useMemo(() => {
-  const filtered = (Array.isArray(campaigns) ? campaigns : []).filter(c => !c.archived).sort((a, b) => b.id - a.id);
-  console.log('sortedCampaigns:', filtered);
-  return filtered;
-}, [campaigns]);
+  const sortedCampaigns = useMemo(() =>
+    (Array.isArray(campaigns) ? campaigns : []).filter(c => !c.archived).sort((a, b) => b.id - a.id),
+    [campaigns]
+  );
 
   const handleChannelChange = (channel) => {
     setSelectedChannel(channel);
@@ -1052,7 +1043,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     setUtmParams(prev => ({ ...prev, [field]: value }));
 
     if (field === 'campaign') {
-      // Erweiterte Validierung für Campaign
       const errors = validateNomenclature(value, field, false, selectedChannel);
       setValidationErrors(prev => ({
         ...prev,
@@ -1063,18 +1053,12 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
       if (value.includes('%')) {
         const parts = value.split('%');
         const searchTerm = parts.length > 1 ? parts[1] : '';
-
-        if (searchTerm.length >= 1) {
-          debouncedFetchLicenses(searchTerm);
-        } else {
-          setShowLicenseDropdown(false);
-          setLicenseSuggestions([]);
-        }
+        debouncedFetchLicenses(searchTerm); // Auch bei leerem searchTerm aufrufen
       } else {
         setShowLicenseDropdown(false);
+        setLicenseSuggestions([]);
       }
     } else {
-      // Andere Felder normal validieren
       const errors = validateNomenclature(value, field, false, selectedChannel);
       setValidationErrors(prev => ({ ...prev, ...errors, [field]: errors[field] || null }));
     }
@@ -1090,22 +1074,19 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   };
 
   const handleCampaignSearchChange = (e) => {
-  const value = e.target.value;
-  setCampaignSearchTerm(value);
+    const value = e.target.value;
+    setCampaignSearchTerm(value);
 
-  const campaigns = Array.isArray(sortedCampaigns) ? sortedCampaigns : [];
-  console.log('handleCampaignSearchChange - campaigns:', campaigns);
-  if (value.length >= 2) {
-    const filtered = campaigns.filter(c =>
-      c.name.toLowerCase().includes(value.toLowerCase())
-    );
-    console.log('handleCampaignSearchChange - filtered:', filtered);
-    setFilteredCampaigns(filtered);
-  } else {
-    setFilteredCampaigns(campaigns);
-  }
-};
-
+    const campaigns = Array.isArray(sortedCampaigns) ? sortedCampaigns : [];
+    if (value.length >= 2) {
+      const filtered = campaigns.filter(c =>
+        c.name.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredCampaigns(filtered);
+    } else {
+      setFilteredCampaigns(campaigns);
+    }
+  };
 
   const handleCampaignSelect = (name) => {
     handleParamChange('campaign', name);
@@ -1216,8 +1197,8 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
 
                   <CampaignInput
                     value={utmParams.campaign}
-                    isLoading={isLoading}  // Neu hinzufügen
-                    sortedCampaigns={sortedCampaigns}  // Neu hinzufügen
+                    isLoading={isLoading}
+                    sortedCampaigns={sortedCampaigns}
                     onChange={handleParamChange}
                     onFocus={() => setShowLicenseDropdown(false)}
                     validationErrors={validationErrors}
