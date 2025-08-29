@@ -340,7 +340,7 @@ const CampaignInput = ({
       const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
       return `${currentYear}_${currentMonth}_urlaubsrabatt_01`;
     }
-    return "de_dd_black_week oder 2025_08_urlaubsrabatt";
+    return "Formatierte Kampagne: land_aktion, YYYY_MM_aktion oder % für Lizenzsuche";
   };
 
   const getFormatHelp = () => {
