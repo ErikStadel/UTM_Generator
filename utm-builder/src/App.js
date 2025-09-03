@@ -221,48 +221,43 @@ const validateBuilderCampaign = (value, errors, warnings) => {
 const validateNomenclature = (value, field, isLibraryScreen = false, selectedChannel = '') => {
   const validationResult = { [field]: null };
 
-  if (!value) return validationResult;
+  if (!value && field !== 'customParams') return validationResult;
 
   if (field === 'campaign') {
     const result = validateUtmCampaign(value, isLibraryScreen);
-
     if (!result.isValid) {
-      // Kombiniere Fehler zu einer Nachricht
       validationResult[field] = result.errors.join('; ');
     } else if (result.warnings.length > 0) {
-      // Zeige Warnungen an (optional)
       validationResult[field + '_warning'] = result.warnings.join('; ');
     }
-
     return validationResult;
   }
 
-  // Validierung für andere Felder...
-  if (field === 'content') {
-    if (/[^a-z0-9_{}]/.test(value)) {
-      if (/[A-Z]/.test(value)) {
-        validationResult[field] = 'Nur Kleinbuchstaben erlaubt';
-      } else if (/\s/.test(value)) {
-        validationResult[field] = 'Keine Leerzeichen erlaubt';
-      } else {
-        const invalidChars = value.match(/[^a-z0-9_{}]/g);
-        if (invalidChars) {
-          const uniqueInvalidChars = [...new Set(invalidChars)];
-          validationResult[field] = `Ungültige Zeichen: ${uniqueInvalidChars.join(', ')}`;
-        }
+  if (field === 'customParams' && value) {
+    const paramPairs = value.split('&').map(pair => pair.trim());
+    for (const pair of paramPairs) {
+      if (!pair) {
+        validationResult[field] = 'Leere Parameter sind nicht erlaubt';
+        return validationResult;
+      }
+      if (!/^[a-zA-Z0-9_]+=[a-zA-Z0-9_]+$/.test(pair)) {
+        validationResult[field] = 'Format muss [Parameter]=[Value] sein, z.B. param1=value1';
+        return validationResult;
       }
     }
-
-    // Facebook/TikTok spezielle Validierung
-    if (selectedChannel === 'Facebook Ads' || selectedChannel === 'Tiktok Ads') {
-      const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
-      if (!allowedDatalistValues.includes(value) && /[A-Z]/.test(value)) {
-        validationResult[field] = 'Nur Kleinbuchstaben erlaubt, außer bei vordefinierten Werten';
-      }
-    }
+    return validationResult;
   }
 
-  if (field === 'term') {
+  if (field === 'content' || field === 'term') {
+    // Ausnahme für vordefinierte Werte bei Facebook Ads und Tiktok Ads
+    if (field === 'content' && (selectedChannel === 'Facebook Ads' || selectedChannel === 'Tiktok Ads')) {
+      const allowedDatalistValues = ['{{placement}}', '__PLACEMENT__'];
+      if (allowedDatalistValues.includes(value)) {
+        return validationResult; // Keine Fehler, wenn vordefinierter Wert
+      }
+    }
+
+    // Standard-Validierung für andere Fälle
     if (/[^a-z0-9_{}]/.test(value)) {
       if (/[A-Z]/.test(value)) {
         validationResult[field] = 'Nur Kleinbuchstaben erlaubt';
@@ -886,7 +881,8 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     medium: '',
     campaign: '',
     content: '',
-    term: ''
+    term: '',
+    customParams: ''
   });
   const [baseUrl, setBaseUrl] = useState('https://example.com');
   const [copySuccess, setCopySuccess] = useState(false);
@@ -918,7 +914,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   };
 
   const fetchLicenses = async (searchTerm) => {
-    // Wenn searchTerm leer ist, alle Lizenzen laden
     const cacheKey = searchTerm ? searchTerm.toLowerCase() : 'all';
     if (licenseSearchCache.has(cacheKey)) {
       const cachedResults = licenseSearchCache.get(cacheKey);
@@ -948,7 +943,6 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
       const data = await response.json();
       const licenses = Array.isArray(data) ? data : Object.values(data).flat();
 
-      // Cache speichern (begrenzt auf 50 Einträge)
       if (licenseSearchCache.size >= 50) {
         const firstKey = licenseSearchCache.keys().next().value;
         licenseSearchCache.delete(firstKey);
@@ -1034,7 +1028,8 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
       ...prev,
       source: channelData.source,
       medium: channelData.medium,
-      term: channelData.showTerm ? '{keyword}' : ''
+      term: channelData.showTerm ? '{keyword}' : '',
+      customParams: ''
     }));
     setValidationErrors({});
   };
@@ -1053,7 +1048,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
       if (value.includes('%')) {
         const parts = value.split('%');
         const searchTerm = parts.length > 1 ? parts[1] : '';
-        debouncedFetchLicenses(searchTerm); // Auch bei leerem searchTerm aufrufen
+        debouncedFetchLicenses(searchTerm);
       } else {
         setShowLicenseDropdown(false);
         setLicenseSuggestions([]);
@@ -1102,6 +1097,15 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     params.append('utm_campaign', utmParams.campaign);
     if (utmParams.content) params.append('utm_content', utmParams.content);
     if (utmParams.term && channels[selectedChannel]?.showTerm) params.append('utm_term', utmParams.term);
+    if (utmParams.customParams) {
+      const customPairs = utmParams.customParams.split('&').map(pair => pair.trim());
+      for (const pair of customPairs) {
+        const [key, value] = pair.split('=');
+        if (key && value) {
+          params.append(key, value);
+        }
+      }
+    }
     return `${baseUrl}?${params.toString()}`;
   };
 
@@ -1296,6 +1300,29 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
                       <ValidationMessage field="term" errors={validationErrors} className="mt-1" />
                     </div>
                   )}
+
+                  <div>
+                    <label>Benutzerdefinierte Parameter (optional)</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={utmParams.customParams}
+                        onChange={(e) => handleParamChange('customParams', e.target.value)}
+                        onFocus={() => {
+                          setShowCampaignDropdown(false);
+                          setShowLicenseDropdown(false);
+                        }}
+                        className={`w-full ${validationErrors.customParams ? 'error border-red-500' : ''}`}
+                        placeholder="param1=value1&param2=value2"
+                      />
+                      {validationErrors.customParams && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <AlertCircle size={20} className="text-red-500" />
+                        </div>
+                      )}
+                    </div>
+                    <ValidationMessage field="customParams" errors={validationErrors} className="mt-1" />
+                  </div>
                 </>
               )}
 
@@ -1330,6 +1357,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
   const [newCampaign, setNewCampaign] = useState({ name: '', category: '', archived: false, inhaber: user.name });
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
+  const [copySuccess, setCopySuccess] = useState({}); // State für Kopier-Erfolgsmeldungen pro Kampagne
 
   const categories = ['Saisonale Aktionen', 'Produktlaunches', 'Gewinnspiele', 'Rabattaktionen', 'Brand Awareness', 'Sonstiges'];
 
@@ -1413,6 +1441,18 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
     }
   };
 
+  const copyCampaignName = async (id, name) => {
+    try {
+      await navigator.clipboard.writeText(name);
+      setCopySuccess(prev => ({ ...prev, [id]: true }));
+      setTimeout(() => {
+        setCopySuccess(prev => ({ ...prev, [id]: false }));
+      }, 2000);
+    } catch (error) {
+      console.error('Fehler beim Kopieren des Kampagnennamens:', error.message);
+    }
+  };
+
   const filteredCampaigns = campaigns.filter((campaign) => {
     const name = (campaign?.name ?? '').toLowerCase();
     const category = (campaign?.category ?? '').toLowerCase();
@@ -1458,7 +1498,7 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
                       const errors = validateNomenclature(newValue, 'campaign', true);
                       setValidationErrors(errors);
                     }}
-                    className={`w-full ${validationErrors.campaign ? 'error border-red-500' : ''} pr-10`}
+                    className={`w-full ${validationErrors.campaign ? 'error border red-500' : ''} pr-10`}
                   />
                   {validationErrors.campaign && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -1596,6 +1636,19 @@ const CampaignLibrary = ({ campaigns, setCampaigns, user }) => {
                       </>
                     ) : (
                       <>
+                        <div className="relative flex items-center">
+                          <button
+                            onClick={() => copyCampaignName(campaign.id, campaign.name)}
+                            className={`icon ${copySuccess[campaign.id] ? 'text-[var(--success-color)]' : 'text-blue-300'}`}
+                          >
+                            <Copy size={14} />
+                          </button>
+                          {copySuccess[campaign.id] && (
+                            <span className="ml-2 text-[var(--success-color)] text-xs animate-fade-in">
+                              ✓ Kopiert!
+                            </span>
+                          )}
+                        </div>
                         <button
                           onClick={() => setEditingCampaign(campaign.id)}
                           className="icon text-blue-300"
