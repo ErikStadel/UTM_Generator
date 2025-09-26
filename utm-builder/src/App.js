@@ -1091,22 +1091,24 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
 
   const generateTrackingTemplate = () => {
   if (!utmParams.source || !utmParams.medium || !utmParams.campaign) return '';
-  const params = new URLSearchParams();
-  params.append('utm_source', utmParams.source);
-  params.append('utm_medium', utmParams.medium);
-  params.append('utm_campaign', utmParams.campaign);
-  if (utmParams.content) params.append('utm_content', utmParams.content);
-  if (utmParams.term && channels[selectedChannel]?.showTerm) params.append('utm_term', utmParams.term);
+  
+  const parts = [];
+  parts.push(`utm_source=${utmParams.source}`);
+  parts.push(`utm_medium=${utmParams.medium}`);
+  parts.push(`utm_campaign=${utmParams.campaign}`);
+  if (utmParams.content) parts.push(`utm_content=${utmParams.content}`);
+  if (utmParams.term && channels[selectedChannel]?.showTerm) parts.push(`utm_term=${utmParams.term}`);
+  
   if (utmParams.customParams) {
     const customPairs = utmParams.customParams.split('&').map(pair => pair.trim());
     for (const pair of customPairs) {
-      const [key, value] = pair.split('=');
-      if (key && value) {
-        params.append(key, value);
+      if (pair.includes('=')) {
+        parts.push(pair);
       }
     }
   }
-  return params.toString();
+  
+  return parts.join('&');
 };
 
 // Neuen State für Copy-Success der Tracking Template hinzufügen:
