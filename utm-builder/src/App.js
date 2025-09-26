@@ -1089,6 +1089,44 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     setCampaignSearchTerm('');
   };
 
+  const generateTrackingTemplate = () => {
+  if (!utmParams.source || !utmParams.medium || !utmParams.campaign) return '';
+  const params = new URLSearchParams();
+  params.append('utm_source', utmParams.source);
+  params.append('utm_medium', utmParams.medium);
+  params.append('utm_campaign', utmParams.campaign);
+  if (utmParams.content) params.append('utm_content', utmParams.content);
+  if (utmParams.term && channels[selectedChannel]?.showTerm) params.append('utm_term', utmParams.term);
+  if (utmParams.customParams) {
+    const customPairs = utmParams.customParams.split('&').map(pair => pair.trim());
+    for (const pair of customPairs) {
+      const [key, value] = pair.split('=');
+      if (key && value) {
+        params.append(key, value);
+      }
+    }
+  }
+  return params.toString();
+};
+
+// Neuen State für Copy-Success der Tracking Template hinzufügen:
+const [copyTemplateSuccess, setCopyTemplateSuccess] = useState(false);
+
+// Neue Copy-Funktion für Tracking Template:
+const copyTrackingTemplateToClipboard = async () => {
+  const template = generateTrackingTemplate();
+  if (template) {
+    try {
+      await navigator.clipboard.writeText(template);
+      setCopyTemplateSuccess(true);
+      setTimeout(() => setCopyTemplateSuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy tracking template: ', err);
+    }
+  }
+};
+
+
   const generateUrl = () => {
     if (!baseUrl || !utmParams.source || !utmParams.medium || !utmParams.campaign) return '';
     const params = new URLSearchParams();
@@ -1327,22 +1365,40 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
               )}
 
               {canGenerateUrl && (
-                <div className="generated-url-container">
-                  <h3>Generierte URL:</h3>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      value={generateUrl()}
-                      readOnly
-                      className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
-                    />
-                    <button onClick={copyToClipboard} className={copySuccess ? 'success' : 'primary'}>
-                      {copySuccess ? <Check size={16} /> : <Copy size={16} />}
-                    </button>
-                  </div>
-                  {copySuccess && <p className="text-[var(--success-color)] text-sm mt-2">✓ URL in Zwischenablage kopiert!</p>}
-                </div>
-              )}
+  <>
+    <div className="generated-url-container">
+      <h3>Generierte URL:</h3>
+      <div className="flex items-center gap-3">
+        <input
+          type="text"
+          value={generateUrl()}
+          readOnly
+          className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
+        />
+        <button onClick={copyToClipboard} className={copySuccess ? 'success' : 'primary'}>
+          {copySuccess ? <Check size={16} /> : <Copy size={16} />}
+        </button>
+      </div>
+      {copySuccess && <p className="text-[var(--success-color)] text-sm mt-2">✓ URL in Zwischenablage kopiert!</p>}
+    </div>
+
+    <div className="generated-url-container">
+      <h3>Tracking-Vorlage (nur Parameter):</h3>
+      <div className="flex items-center gap-3">
+        <input
+          type="text"
+          value={generateTrackingTemplate()}
+          readOnly
+          className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
+        />
+        <button onClick={copyTrackingTemplateToClipboard} className={copyTemplateSuccess ? 'success' : 'primary'}>
+          {copyTemplateSuccess ? <Check size={16} /> : <Copy size={16} />}
+        </button>
+      </div>
+      {copyTemplateSuccess && <p className="text-[var(--success-color)] text-sm mt-2">✓ Tracking-Vorlage in Zwischenablage kopiert!</p>}
+    </div>
+  </>
+)}
             </div>
           </div>
         </div>
