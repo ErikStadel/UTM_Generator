@@ -906,9 +906,9 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     'Facebook Ads': { source: '{{site_source_name}}', medium: 'cpc', showTerm: false },
     'Tiktok Ads': { source: 'tiktok', medium: 'cpc', showTerm: false },
     'Email': { source: 'newsletter', medium: 'email', showTerm: false },
-    'Social Organic': { source: '{{site_source_name}}', medium: 'organic', showTerm: false },
+    'Social Organic': { source: '', medium: 'organic', showTerm: false, sourceDropdown: true },
     'SEO': { source: 'google', medium: 'organic', showTerm: false },
-    'Affiliate': { source: 'affiliate', medium: 'referral', showTerm: false },
+    'Affiliate': { source: '', medium: 'aff', showTerm: false, sourceEditable: true },
     'Koop': { source: 'partner', medium: 'koop', showTerm: false },
     'Push': { source: 'website', medium: 'push', showTerm: false }
   };
@@ -1026,7 +1026,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     const channelData = channels[channel];
     setUtmParams(prev => ({
       ...prev,
-      source: channelData.source,
+      source: channelData.sourceEditable || channelData.sourceDropdown ? '' : channelData.source,
       medium: channelData.medium,
       term: channelData.showTerm ? '{keyword}' : '',
       customParams: ''
@@ -1090,66 +1090,66 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   };
 
   const generateTrackingTemplate = () => {
-  if (!utmParams.source || !utmParams.medium || !utmParams.campaign) return '';
-  
-  const parts = [];
-  parts.push(`utm_source=${utmParams.source}`);
-  parts.push(`utm_medium=${utmParams.medium}`);
-  parts.push(`utm_campaign=${utmParams.campaign}`);
-  if (utmParams.content) parts.push(`utm_content=${utmParams.content}`);
-  if (utmParams.term && channels[selectedChannel]?.showTerm) parts.push(`utm_term=${utmParams.term}`);
-  
-  if (utmParams.customParams) {
-    const customPairs = utmParams.customParams.split('&').map(pair => pair.trim());
-    for (const pair of customPairs) {
-      if (pair.includes('=')) {
-        parts.push(pair);
+    if (!utmParams.source || !utmParams.medium || !utmParams.campaign) return '';
+
+    const parts = [];
+    parts.push(`utm_source=${utmParams.source}`);
+    parts.push(`utm_medium=${utmParams.medium}`);
+    parts.push(`utm_campaign=${utmParams.campaign}`);
+    if (utmParams.content) parts.push(`utm_content=${utmParams.content}`);
+    if (utmParams.term && channels[selectedChannel]?.showTerm) parts.push(`utm_term=${utmParams.term}`);
+
+    if (utmParams.customParams) {
+      const customPairs = utmParams.customParams.split('&').map(pair => pair.trim());
+      for (const pair of customPairs) {
+        if (pair.includes('=')) {
+          parts.push(pair);
+        }
       }
     }
-  }
-  
-  return parts.join('&');
-};
 
-// Neuen State für Copy-Success der Tracking Template hinzufügen:
-const [copyTemplateSuccess, setCopyTemplateSuccess] = useState(false);
+    return parts.join('&');
+  };
 
-// Neue Copy-Funktion für Tracking Template:
-const copyTrackingTemplateToClipboard = async () => {
-  const template = generateTrackingTemplate();
-  if (template) {
-    try {
-      await navigator.clipboard.writeText(template);
-      setCopyTemplateSuccess(true);
-      setTimeout(() => setCopyTemplateSuccess(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy tracking template: ', err);
+  // Neuen State für Copy-Success der Tracking Template hinzufügen:
+  const [copyTemplateSuccess, setCopyTemplateSuccess] = useState(false);
+
+  // Neue Copy-Funktion für Tracking Template:
+  const copyTrackingTemplateToClipboard = async () => {
+    const template = generateTrackingTemplate();
+    if (template) {
+      try {
+        await navigator.clipboard.writeText(template);
+        setCopyTemplateSuccess(true);
+        setTimeout(() => setCopyTemplateSuccess(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy tracking template: ', err);
+      }
     }
-  }
-};
+  };
 
 
   const generateUrl = () => {
-  if (!baseUrl || !utmParams.source || !utmParams.medium || !utmParams.campaign) return '';
-  
-  const parts = [];
-  parts.push(`utm_source=${utmParams.source}`);
-  parts.push(`utm_medium=${utmParams.medium}`);
-  parts.push(`utm_campaign=${utmParams.campaign}`);
-  if (utmParams.content) parts.push(`utm_content=${utmParams.content}`);
-  if (utmParams.term && channels[selectedChannel]?.showTerm) parts.push(`utm_term=${utmParams.term}`);
-  
-  if (utmParams.customParams) {
-    const customPairs = utmParams.customParams.split('&').map(pair => pair.trim());
-    for (const pair of customPairs) {
-      if (pair.includes('=')) {
-        parts.push(pair);
+    if (!baseUrl || !utmParams.source || !utmParams.medium || !utmParams.campaign) return '';
+
+    const parts = [];
+    parts.push(`utm_source=${utmParams.source}`);
+    parts.push(`utm_medium=${utmParams.medium}`);
+    parts.push(`utm_campaign=${utmParams.campaign}`);
+    if (utmParams.content) parts.push(`utm_content=${utmParams.content}`);
+    if (utmParams.term && channels[selectedChannel]?.showTerm) parts.push(`utm_term=${utmParams.term}`);
+
+    if (utmParams.customParams) {
+      const customPairs = utmParams.customParams.split('&').map(pair => pair.trim());
+      for (const pair of customPairs) {
+        if (pair.includes('=')) {
+          parts.push(pair);
+        }
       }
     }
-  }
-  
-  return `${baseUrl}?${parts.join('&')}`;
-};
+
+    return `${baseUrl}?${parts.join('&')}`;
+  };
 
   const copyToClipboard = async () => {
     const url = generateUrl();
@@ -1233,7 +1233,28 @@ const copyTrackingTemplateToClipboard = async () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label>UTM Source</label>
-                      <input type="text" value={utmParams.source} readOnly className="w-full" />
+                      {channels[selectedChannel]?.sourceEditable ? (
+                        <input
+                          type="text"
+                          value={utmParams.source}
+                          onChange={(e) => setUtmParams(prev => ({ ...prev, source: e.target.value }))}
+                          className="w-full"
+                          placeholder="z.B. partnerName"
+                        />
+                      ) : channels[selectedChannel]?.sourceDropdown ? (
+                        <select
+                          value={utmParams.source}
+                          onChange={(e) => setUtmParams(prev => ({ ...prev, source: e.target.value }))}
+                          className="w-full"
+                        >
+                          <option value="">-- Plattform wählen --</option>
+                          <option value="ig">Instagram</option>
+                          <option value="fb">Facebook</option>
+                          <option value="tiktok">TikTok</option>
+                        </select>
+                      ) : (
+                        <input type="text" value={utmParams.source} readOnly className="w-full" />
+                      )}
                     </div>
                     <div>
                       <label>UTM Medium</label>
@@ -1369,40 +1390,40 @@ const copyTrackingTemplateToClipboard = async () => {
               )}
 
               {canGenerateUrl && (
-  <>
-    <div className="generated-url-container">
-      <h3>Generierte URL:</h3>
-      <div className="flex items-center gap-3">
-        <input
-          type="text"
-          value={generateUrl()}
-          readOnly
-          className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
-        />
-        <button onClick={copyToClipboard} className={copySuccess ? 'success' : 'primary'}>
-          {copySuccess ? <Check size={16} /> : <Copy size={16} />}
-        </button>
-      </div>
-      {copySuccess && <p className="text-[var(--success-color)] text-sm mt-2">✓ URL in Zwischenablage kopiert!</p>}
-    </div>
+                <>
+                  <div className="generated-url-container">
+                    <h3>Generierte URL:</h3>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={generateUrl()}
+                        readOnly
+                        className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
+                      />
+                      <button onClick={copyToClipboard} className={copySuccess ? 'success' : 'primary'}>
+                        {copySuccess ? <Check size={16} /> : <Copy size={16} />}
+                      </button>
+                    </div>
+                    {copySuccess && <p className="text-[var(--success-color)] text-sm mt-2">✓ URL in Zwischenablage kopiert!</p>}
+                  </div>
 
-    <div className="generated-url-container">
-      <h3>Tracking-Vorlage (nur Parameter):</h3>
-      <div className="flex items-center gap-3">
-        <input
-          type="text"
-          value={generateTrackingTemplate()}
-          readOnly
-          className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
-        />
-        <button onClick={copyTrackingTemplateToClipboard} className={copyTemplateSuccess ? 'success' : 'primary'}>
-          {copyTemplateSuccess ? <Check size={16} /> : <Copy size={16} />}
-        </button>
-      </div>
-      {copyTemplateSuccess && <p className="text-[var(--success-color)] text-sm mt-2">✓ Tracking-Vorlage in Zwischenablage kopiert!</p>}
-    </div>
-  </>
-)}
+                  <div className="generated-url-container">
+                    <h3>Tracking-Vorlage (nur Parameter):</h3>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={generateTrackingTemplate()}
+                        readOnly
+                        className="flex-1 px-4 py-3 text-sm bg-gray-800 border border-[var(--border-color)] rounded-lg"
+                      />
+                      <button onClick={copyTrackingTemplateToClipboard} className={copyTemplateSuccess ? 'success' : 'primary'}>
+                        {copyTemplateSuccess ? <Check size={16} /> : <Copy size={16} />}
+                      </button>
+                    </div>
+                    {copyTemplateSuccess && <p className="text-[var(--success-color)] text-sm mt-2">✓ Tracking-Vorlage in Zwischenablage kopiert!</p>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
