@@ -893,7 +893,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
   const [campaignSearchTerm, setCampaignSearchTerm] = useState('');
   const [showCampaignDropdown, setShowCampaignDropdown] = useState(false);
   const [filteredCampaigns, setFilteredCampaigns] = useState([]);
-  const [licenseSearchCache, setLicenseSearchCache] = useState(new Map());
+  const [licenseSearchCache] = useState(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [licenseSearchAbortController, setLicenseSearchAbortController] = useState(null);
 
@@ -970,7 +970,10 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     };
   };
 
-  const debouncedFetchLicenses = useCallback(debounce(fetchLicenses, 200), [licenseSearchCache]);
+  const debouncedFetchLicenses = useCallback(
+    (searchTerm) => debounce(fetchLicenses, 200)(searchTerm),
+    [fetchLicenses]
+  );
 
   useEffect(() => {
     const fetchCampaigns = async () => {
