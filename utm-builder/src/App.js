@@ -960,7 +960,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     } finally {
       setLicenseSearchAbortController(null);
     }
-  }, [licenseSearchCache]);
+  }, [licenseSearchCache, licenseSearchAbortController]);
 
   const debounce = (func, wait) => {
     let timeout;
