@@ -913,7 +913,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     'Push': { source: 'website', medium: 'push', showTerm: false }
   };
 
-  const fetchLicenses = async (searchTerm) => {
+  const fetchLicenses = useCallback(async (searchTerm) => {
     const cacheKey = searchTerm ? searchTerm.toLowerCase() : 'all';
     if (licenseSearchCache.has(cacheKey)) {
       const cachedResults = licenseSearchCache.get(cacheKey);
@@ -960,7 +960,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     } finally {
       setLicenseSearchAbortController(null);
     }
-  };
+  }, [licenseSearchCache]);
 
   const debounce = (func, wait) => {
     let timeout;
