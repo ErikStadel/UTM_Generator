@@ -909,7 +909,7 @@ const UTMBuilder = ({ campaigns, setCampaigns, user }) => {
     'Social Organic': { source: '', medium: 'organic', showTerm: false, sourceDropdown: true },
     'SEO': { source: 'google', medium: 'organic', showTerm: false },
     'Affiliate': { source: '', medium: 'aff', showTerm: false, sourceEditable: true },
-    'Koop': { source: '', medium: 'koop', showTerm: false },
+    'Koop': { source: '', medium: 'koop', showTerm: false, sourceEditable: true },
     'Push': { source: 'website', medium: 'push', showTerm: false }
   };
 
